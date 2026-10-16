@@ -1,0 +1,55 @@
+{
+	"weather": {
+		"forecast": [
+			{
+				"date": "<YYYY-MM-DD>",
+				"temperature": {
+					"min_c": "<minimum_temperature_celsius>",
+					"max_c": "<maximum_temperature_celsius>"
+				},
+				"rainfall_mm": "<rainfall_millimeters>",
+				"wind": {
+					"speed_m_s": "<wind_speed_meters_per_second>",
+					"direction": "<wind_direction>"
+				},
+				"conditions": "<weather_conditions>"
+			},
+			{
+				"date": "<YYYY-MM-DD>",
+				"temperature": {
+					"min_c": "<minimum_temperature_celsius>",
+					"max_c": "<maximum_temperature_celsius>"
+				},
+				"rainfall_mm": "<rainfall_millimeters>",
+				"wind": {
+					"speed_m_s": "<wind_speed_meters_per_second>",
+					"direction": "<wind_direction>"
+				},
+				"conditions": "<weather_conditions>"
+			},
+			{
+				"date": "<YYYY-MM-DD>",
+				"temperature": {
+					"min_c": "<minimum_temperature_celsius>",
+					"max_c": "<maximum_temperature_celsius>"
+				},
+				"rainfall_mm": "<rainfall_millimeters>",
+				"wind": {
+					"speed_m_s": "<wind_speed_meters_per_second>",
+					"direction": "<wind_direction>"
+				},
+				"conditions": "<weather_conditions>"
+			}
+		]
+	},
+	"estate": {
+		"construction_year": "<year>",
+		"renovation_years": ["<year>", "<year>"],
+		"house_type": "<house_type>",
+		"shape": "<building_shape>",
+		"floor_area_m2": "<floor_area_square_meters>",
+		"number_of_floors": "<number_of_floors>",
+		"condition": "<building_condition>",
+		"address": "<address>"
+	}
+}
