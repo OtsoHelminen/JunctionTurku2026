@@ -1,0 +1,40 @@
+# Koko ympäristö yhdellä komennolla:  docker compose up -d --build
+# Mallin lataus ensimmäisellä kerralla:  docker compose exec ollama ollama pull qwen3:8b
+
+services:
+  logical-unit:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      AGENT_ENABLED: "true"
+      LLM_BASE_URL: http://ollama:11434/v1
+      LLM_MODEL: qwen3:8b
+      ENABLE_ADMIN_ENDPOINTS: "true"   # kehityskäyttöön; poista tuotannossa
+      LOG_LEVEL: INFO
+    volumes:
+      - alert-data:/data               # SQLite-tiedosto
+      - ./config:/srv/config:ro        # säännöt ja ratkaisijat muokattavissa ilman uutta buildia
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # NVIDIA-näytönohjain käyttöön (vaatii nvidia-container-toolkitin):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  alert-data:
+  ollama-models:
