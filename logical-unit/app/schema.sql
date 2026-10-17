@@ -1,10 +1,11 @@
 -- Logical Unitin SQLite-skeema. Kaikki aikaleimat ovat unix-sekunteja (UTC).
 
--- Datalähteet (kohde, laite tms.). last_seen säilyy, vaikka raakadata poistetaan,
+-- Datalähteet (kohteet, source_id = "house-<id>"). last_seen säilyy, vaikka raakadata poistetaan,
 -- joten "data puuttuu" -sääntö toimii myös tunnin jälkeen.
 CREATE TABLE IF NOT EXISTS sources (
     source_id   TEXT PRIMARY KEY,
     area        TEXT,
+    estate      TEXT,                                   -- JSON: kohteen tiedot Data Consolidatorilta
     first_seen  INTEGER NOT NULL,
     last_seen   INTEGER NOT NULL
 );

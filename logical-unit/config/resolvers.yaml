@@ -5,31 +5,31 @@
 # Korvaa ne oikeilla kumppaneilla ennen tuotantokäyttöä.
 
 resolvers:
-  - name: Esimerkki Putkihuolto Oy
-    category: putki
+  - name: Esimerkki Kattohuolto Oy
+    category: katto
     areas: [Helsinki, Espoo]
     phone: "+358 40 000 0001"
-    email: putki@example.com
+    email: katto@example.com
     on_call: true
     priority: 10
-    notes: Päivystys 24/7, sopimusasiakas
+    notes: Myrskypäivystys 24/7, sopimusasiakas
 
-  - name: Demo Putki ja Vesi Oy
-    category: putki
+  - name: Demo Peltikatot Oy
+    category: katto
     areas: [Vantaa]
     phone: "+358 40 000 0002"
-    email: vesi@example.com
+    email: pelti@example.com
     on_call: false
     priority: 20
 
-  - name: Varaputki Esimerkki Ky
-    category: putki
+  - name: Varakatto Esimerkki Ky
+    category: katto
     areas: ["*"]
     phone: "+358 40 000 0003"
-    email: varaputki@example.com
+    email: varakatto@example.com
     on_call: false
     priority: 50
-    notes: Varakumppani koko pääkaupunkiseudulle
+    notes: Varakumppani koko pääkaupunkiseudulle, myös kaatuneiden puiden raivaus
 
   - name: Kaupunki-LVI Esimerkki Oy
     category: lvi
@@ -47,6 +47,15 @@ resolvers:
     on_call: false
     priority: 10
 
+  - name: Salaojat ja Tulvasuojaus Esimerkki Oy
+    category: kosteus
+    areas: [Helsinki, Espoo, Vantaa]
+    phone: "+358 40 000 0007"
+    email: salaoja@example.com
+    on_call: true
+    priority: 5
+    notes: Tulvapumput ja hiekkasäkit päivystyksenä
+
   - name: Automaatiohuolto Esimerkki Oy
     category: automaatio
     areas: ["*"]
@@ -56,43 +65,53 @@ resolvers:
     priority: 10
 
 playbooks:
-  pressure_low:
-    category: putki
+  heavy_rain:
+    category: katto
     actions:
-      - Tarkista, onko alueella vesilaitoksen ilmoittamia katkoja tai korjaustöitä
-      - Tarkista paineenalennusventtiili ja suodattimet
-      - Jos paine jatkaa laskuaan, tilaa putkiasentaja
-  pressure_critical:
-    category: putki
-    actions:
-      - Tarkista välittömästi näkyvät vuodot ja sulje tarvittaessa pääsulku
-      - Tilaa päivystävä putkiasentaja
-  pressure_drop:
-    category: putki
-    actions:
-      - Vertaa virtausdataan; samanaikainen virtaus viittaa vuotoon
-      - Tarkista tekniset tilat ja runkolinja
-  continuous_flow:
-    category: putki
-    actions:
-      - Tarkista vuotavat hanat, WC-istuimet ja varaajan varoventtiili
-      - Jos syy ei löydy, tilaa vuodonetsintä
-  freezing_risk:
-    category: lvi
-    actions:
-      - Tarkista lämmityksen toiminta ja ovien sekä ikkunoiden sulkeutuminen
-      - Suojaa jäätymiselle alttiit putket
-  high_humidity:
+      - Puhdista rännit ja syöksytorvet ennen sadetta
+      - Varmista, että sadevesi ohjautuu poispäin sokkelista
+      - Tarkista sateen jälkeen ullakko ja katon läpiviennit kosteuden varalta
+  extreme_rain:
     category: kosteus
     actions:
-      - Tarkista ilmanvaihdon toiminta
-      - Tarkista mahdolliset vesivuodot ja tilaa tarvittaessa kosteuskartoitus
-  pressure_sensor_flatline:
-    category: automaatio
+      - Siirrä kellarista ja maanvaraisista tiloista arvotavarat ylemmäs
+      - Tarkista salaojakaivot ja mahdollisen tulvapumpun toiminta
+      - Tilaa tarvittaessa päivystävä tulvasuojaus
+  rain_accumulation:
+    category: kosteus
     actions:
-      - Tarkista anturin kytkennät ja tiedonsiirto
-      - Vertaa paikalliseen painemittariin
+      - Tarkista salaojien ja sadevesikaivojen vetävyys
+      - Seuraa kellarin ja alapohjan kosteutta sateiden jälkeen
+  storm_forecast:
+    category: katto
+    actions:
+      - Kiinnitä tai siirrä sisälle irtotavarat (pihakalusteet, trampoliini)
+      - Tarkista kattopeltien, piipun pellitysten ja antennien kiinnitykset
+      - Arvioi pihapuiden kunto ja kaatumisriski
+  storm_wind:
+    category: katto
+    actions:
+      - Kiinnitä irtotavarat ja sulje ikkunat sekä ilmanvaihtoluukut
+      - Tarkista myrskyn jälkeen katto, rännit ja pihapuut
+  severe_storm:
+    category: katto
+    actions:
+      - Pysy sisällä ja vältä puiden läheisyyttä
+      - Myrskyn jälkeen dokumentoi vahingot valokuvin vakuutusta varten
+      - Tilaa päivystävä kattohuolto, jos katteessa on vaurioita
+  frost_forecast:
+    category: lvi
+    actions:
+      - Tyhjennä ja sulje ulkohanat ja kastelujärjestelmät
+      - Varmista lämmityksen toiminta ja ettei kylmissä tiloissa ole vesiputkia ilman suojausta
+  hard_frost:
+    category: lvi
+    actions:
+      - Varmista, että lämmitys toimii kaikissa tiloissa, myös kellarissa ja ryömintätilassa
+      - Suojaa tai lämmitä jäätymiselle alttiit putket (lämmityskaapelit)
+      - Jos vesi ei tule hanasta, sulje pääsulku ja tilaa LVI-asentaja
   no_data:
     category: automaatio
     actions:
-      - Tarkista kohteen tiedonsiirtoyhteys ja Data Consolidatorin tila
+      - Tarkista Data Consolidatorin tila (GET /app/data_events)
+      - Tarkista, onko kohteen 25 km säteellä säätapahtumia

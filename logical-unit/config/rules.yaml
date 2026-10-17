@@ -1,12 +1,22 @@
 # Hälytyssäännöt. Nämä päättävät, syntyykö hälytys. Kielimalli EI päätä sitä.
 #
+# Data tulee Data Consolidatorilta (app/consolidator.py). Jokaisesta kohteesta tallennetaan
+# minuutin välein lähialueen uusimman sääennusteen arvot:
+#   rain_today_mm            tämän päivän sademäärä
+#   wind_today_m_s           tämän päivän tuulen nopeus
+#   temp_min_today_c         tämän päivän alin lämpötila
+#   temp_max_today_c         tämän päivän ylin lämpötila
+#   rain_forecast_total_mm   sademäärä yhteensä koko ennusteen ajalta (yleensä 3 vrk)
+#   wind_forecast_max_m_s    kovin tuuli koko ennusteen aikana
+#   temp_forecast_min_c      alin lämpötila koko ennusteen aikana
+#
 # Yhteiset kentät:
 #   id         yksilöllinen tunniste (pelikirjat viittaavat tähän)
 #   type       threshold | change | sustained | flatline | missing_data
-#   metric     mittarin nimi syötteen "metrics"-objektissa (ei missing_data-säännöissä)
+#   metric     mittarin nimi (yllä; ei missing_data-säännöissä)
 #   severity   info | low | medium | high | critical
 #   message    teksti; käytettävissä {source_id}, {value} ja säännön details-kentät
-#   category   ratkaisijakategoria (putki, lvi, kosteus, automaatio...)
+#   category   ratkaisijakategoria (katto, kosteus, lvi, automaatio)
 #   group      saman ryhmän säännöt = yksi hälytys, vakavin voittaa (-> eskalointi)
 #   immediate  true = arvioidaan joka minuutti, ei odoteta tasatuntia
 #   sources    valinnainen lista source_id:itä, joita sääntö koskee (oletus: kaikki)
@@ -18,99 +28,122 @@
 #   flatline:     window_minutes, min_points, tolerance
 #   missing_data: max_gap_minutes
 #
-# HUOM: mittarinimet ja raja-arvot ovat esimerkkejä. Sovi oikeat arvot alan asiantuntijan kanssa.
+# HUOM: raja-arvot ovat esimerkkejä (Ilmatieteen laitoksen varoitusrajojen tapaisia).
+# Sovi lopulliset arvot asiantuntijan kanssa.
 
 rules:
-  # --- Vedenpaine: kaksi tasoa samassa ryhmässä -> medium eskaloituu criticaliksi
-  - id: pressure_low
-    group: water_pressure
+  # --- Sade: rankkasade (high) eskaloituu erittäin rankaksi (critical)
+  - id: heavy_rain
+    group: rain
     type: threshold
-    metric: water_pressure_bar
-    op: "<"
-    value: 2.0
+    metric: rain_today_mm
+    op: ">="
+    value: 10
     aggregate: avg
     window_minutes: 15
-    min_points: 5
-    severity: medium
-    category: putki
-    message: "Vedenpaine matala kohteessa {source_id}: keskiarvo {value} bar (raja {threshold})"
+    min_points: 3
+    severity: high
+    category: katto
+    message: "Rankkasade kohteessa {source_id}: ennuste {value} mm tänään (raja {threshold} mm)"
 
-  - id: pressure_critical
-    group: water_pressure
+  - id: extreme_rain
+    group: rain
     type: threshold
-    metric: water_pressure_bar
-    op: "<"
-    value: 1.0
+    metric: rain_today_mm
+    op: ">="
+    value: 25
     aggregate: last
     window_minutes: 5
     severity: critical
     immediate: true
-    category: putki
-    message: "Vedenpaine kriittisen matala kohteessa {source_id}: {value} bar"
+    category: kosteus
+    message: "Erittäin rankka sade kohteessa {source_id}: ennuste {value} mm tänään, tulvariski"
 
-  - id: pressure_drop
-    type: change
-    metric: water_pressure_bar
-    direction: down
-    pct: 25
-    window_minutes: 60
-    compare_minutes: 10
-    severity: high
-    category: putki
-    message: "Vedenpaine laskenut {abs_change_pct} % tunnin aikana kohteessa {source_id} ({baseline} -> {current} bar)"
-
-  # --- Jatkuva virtaus koko tunnin = mahdollinen vuoto
-  - id: continuous_flow
-    type: sustained
-    metric: flow_l_min
-    op: ">"
-    value: 0.5
-    window_minutes: 60
-    min_coverage: 0.8
-    severity: medium
-    category: putki
-    message: "Vesi on virrannut yhtäjaksoisesti {duration_minutes} min kohteessa {source_id} (vähintään {value} l/min), mahdollinen vuoto"
-
-  # --- Jäätymisriski: heti
-  - id: freezing_risk
+  # --- Sateen kertymä lähipäivinä: salaojat ja perustukset
+  - id: rain_accumulation
     type: threshold
-    metric: temperature_c
-    op: "<"
-    value: 3
-    aggregate: min
-    window_minutes: 10
-    severity: critical
-    immediate: true
-    category: lvi
-    message: "Jäätymisriski kohteessa {source_id}: lämpötila {value} °C"
-
-  # --- Kosteus
-  - id: high_humidity
-    type: sustained
-    metric: humidity_pct
-    op: ">"
-    value: 80
-    window_minutes: 60
+    metric: rain_forecast_total_mm
+    op: ">="
+    value: 30
+    aggregate: avg
+    window_minutes: 15
+    min_points: 3
     severity: medium
     category: kosteus
-    message: "Suhteellinen kosteus yli {threshold} % koko tunnin kohteessa {source_id}"
+    message: "Lähipäivien sademäärä kohteessa {source_id} yhteensä {value} mm (raja {threshold} mm)"
 
-  # --- Anturivika: arvo ei muutu lainkaan
-  - id: pressure_sensor_flatline
-    type: flatline
-    metric: water_pressure_bar
-    window_minutes: 60
-    min_points: 45
-    tolerance: 0.0
-    severity: low
-    category: automaatio
-    message: "Paineanturin arvo ei ole muuttunut tuntiin kohteessa {source_id} ({value} bar), mahdollinen anturivika"
+  # --- Tuuli: tuleva myrsky (medium) -> myrsky tänään (high) -> kova myrsky (critical)
+  - id: storm_forecast
+    group: wind
+    type: threshold
+    metric: wind_forecast_max_m_s
+    op: ">="
+    value: 15
+    aggregate: avg
+    window_minutes: 15
+    min_points: 3
+    severity: medium
+    category: katto
+    message: "Myrsky ennusteessa kohteelle {source_id}: tuulta jopa {value} m/s lähipäivinä"
 
-  # --- Data lakannut tulemasta
+  - id: storm_wind
+    group: wind
+    type: threshold
+    metric: wind_today_m_s
+    op: ">="
+    value: 15
+    aggregate: avg
+    window_minutes: 15
+    min_points: 3
+    severity: high
+    category: katto
+    message: "Myrsky kohteessa {source_id} tänään: tuuli {value} m/s (raja {threshold} m/s)"
+
+  - id: severe_storm
+    group: wind
+    type: threshold
+    metric: wind_today_m_s
+    op: ">="
+    value: 21
+    aggregate: last
+    window_minutes: 5
+    severity: critical
+    immediate: true
+    category: katto
+    message: "Kova myrsky kohteessa {source_id}: tuuli {value} m/s"
+
+  # --- Pakkanen: jäätymisriski (medium) -> kova pakkanen (high)
+  - id: frost_forecast
+    group: frost
+    type: threshold
+    metric: temp_forecast_min_c
+    op: "<="
+    value: 0
+    aggregate: avg
+    window_minutes: 15
+    min_points: 3
+    severity: medium
+    category: lvi
+    message: "Pakkasta ennusteessa kohteelle {source_id}: alimmillaan {value} °C"
+
+  - id: hard_frost
+    group: frost
+    type: threshold
+    metric: temp_min_today_c
+    op: "<="
+    value: -15
+    aggregate: min
+    window_minutes: 15
+    min_points: 3
+    severity: high
+    category: lvi
+    message: "Kova pakkanen kohteessa {source_id} tänään: {value} °C, putkien jäätymisriski"
+
+  # --- Data lakannut tulemasta (Data Consolidator alhaalla tai ei tapahtumia lähialueelta)
   - id: no_data
     type: missing_data
     max_gap_minutes: 10
     severity: high
     immediate: true
     category: automaatio
-    message: "Kohteesta {source_id} ei ole tullut dataa {gap_minutes} minuuttiin"
+    message: "Kohteesta {source_id} ei ole saatu säädataa {gap_minutes} minuuttiin"

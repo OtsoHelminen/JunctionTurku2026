@@ -1,11 +1,14 @@
 """Nopea simulaatio: neljä tuntia dataa muutamassa sekunnissa, ilman palvelinta ja ilman kielimallia.
 
 Ajo projektin juuresta:  python scripts/demo.py
-Näyttää, mitä hälytystapahtumia syntyy ja miltä App:lle menevä hälytys-JSON näyttää.
+Data on Data Consolidatorin muotoista (examples/input.json) ja kulkee saman adapterin
+(app/consolidator.py) läpi kuin oikea haku. Näyttää, mitä hälytystapahtumia syntyy ja
+miltä App:lle menevä hälytys-JSON näyttää.
 """
 
 from __future__ import annotations
 
+import copy
 import json
 import random
 import sys
@@ -18,30 +21,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import repository as repo  # noqa: E402
 from app.agent.worker import process_pending  # noqa: E402
 from app.config import PROJECT_ROOT, load_settings  # noqa: E402
+from app.consolidator import ingest  # noqa: E402
 from app.db import connect, init_db, session  # noqa: E402
 from app.jobs import hourly_evaluation, minute_tick  # noqa: E402
+from app.models import HouseEvents  # noqa: E402
 from app.rules import load_rules  # noqa: E402
 from app.seed import apply_seed, load_seed_file  # noqa: E402
 from app.serializers import iso  # noqa: E402
 
 T0 = 1_792_220_400  # 2026-10-17 07:00 UTC
-SOURCE, AREA = "site-42", "Helsinki"
+SOURCE = "house-1"
+TEMPLATE = json.loads((PROJECT_ROOT / "examples" / "input.json").read_text(encoding="utf-8"))
 rng = random.Random(42)
 
 
-def scenario(minute: int) -> dict[str, float]:
-    pressure, flow = 3.0, (1.2 if rng.random() < 0.15 else 0.0)  # normaali: satunnaista käyttöä
-    if 90 <= minute < 185:                                       # vuoto alkaa
-        pressure = max(1.7, 3.0 - (minute - 90) * 0.04)
-        flow = 2.5
-    if 185 <= minute < 190:                                      # paine romahtaa
-        pressure, flow = 0.8, 4.0
-    return {
-        "water_pressure_bar": round(pressure + rng.uniform(-0.03, 0.03), 3),
-        "flow_l_min": flow,
-        "temperature_c": round(19 + rng.uniform(-0.3, 0.3), 2),
-        "humidity_pct": round(45 + rng.uniform(-2, 2), 1),
-    }
+def scenario(minute: int) -> HouseEvents:
+    """Consolidatorin vastaus kohteelle 1: normaali -> myrsky lähestyy -> kova myrsky -> tyyntyy."""
+    rain, wind = 1.0, 5.0                          # normaali syyssää
+    if 90 <= minute < 185:                         # myrsky lähestyy: sade ja tuuli voimistuvat
+        rain = min(14.0, 1.0 + (minute - 90) * 0.3)
+        wind = min(18.0, 5.0 + (minute - 90) * 0.3)
+    if 185 <= minute < 190:                        # kova myrsky
+        rain, wind = 28.0, 24.0
+    payload = copy.deepcopy(TEMPLATE)
+    for i, day in enumerate(payload["data_events"][0]["weather"]["forecast"]):
+        day["rainfall_mm"] = round(rain / (i + 1) + rng.uniform(0, 0.3), 1)
+        day["wind"]["speed_m_s"] = round(wind / (i + 1) + rng.uniform(0, 0.3), 1)
+        day["temperature"] = {"min_c": round(6 + i + rng.uniform(-0.3, 0.3), 1), "max_c": 12.0 + i}
+    return HouseEvents.model_validate(payload)
 
 
 def main() -> None:
@@ -52,13 +59,12 @@ def main() -> None:
         apply_seed(conn, load_seed_file(PROJECT_ROOT / "config" / "resolvers.yaml"))
     rules = load_rules(settings.rules_path)
 
-    print("Simuloidaan 4 h: normaali -> vuoto (90 min) -> paineen romahdus (185 min) -> korjaus (190 min)\n")
+    print("Simuloidaan 4 h: normaali -> myrsky lähestyy (90 min) -> kova myrsky (185 min) -> tyyntyy (190 min)\n")
     timeline = []
     for minute in range(0, 241):
         now = T0 + minute * 60
-        with session(settings.db_path) as conn:          # sama kuin POST /input
-            repo.upsert_source(conn, SOURCE, AREA, now)
-            repo.insert_readings(conn, SOURCE, now, scenario(minute))
+        with session(settings.db_path) as conn:          # sama kuin consolidatorin haku
+            ingest(conn, scenario(minute), now)
         timeline += minute_tick(settings, rules, now)     # joka minuutti
         if minute > 0 and minute % 60 == 0:               # tasatunnein
             timeline += hourly_evaluation(settings, rules, now)
@@ -73,12 +79,12 @@ def main() -> None:
     analyzed = conn.execute(
         "SELECT payload FROM alert_events WHERE event_type = 'analyzed' ORDER BY id LIMIT 1"
     ).fetchone()
-    summaries = repo.hourly_history(conn, SOURCE, "water_pressure_bar", 0)
+    summaries = repo.hourly_history(conn, SOURCE, "wind_today_m_s", 0)
     conn.close()
 
     print("\nEsimerkki App:lle menevästä hälytys-JSONista (analyysin jälkeen):")
     print(json.dumps(json.loads(analyzed["payload"]), ensure_ascii=False, indent=2))
-    print("\nTuntikoosteet säilyvät, vaikka raakadata poistetaan:")
+    print("\nTuntikoosteet (tuuli m/s) säilyvät, vaikka raakadata poistetaan:")
     for row in summaries:
         print(f"  {row['hour']}  min {row['min']:.2f}  max {row['max']:.2f}  avg {row['avg']:.2f}  ({row['count']} lukemaa)")
     print(f"\nKanta: {settings.db_path}  (viimeisin hetki {iso(T0 + 240 * 60)})")
