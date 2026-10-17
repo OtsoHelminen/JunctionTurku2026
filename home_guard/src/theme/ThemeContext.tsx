@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export interface ThemeColors {
   background: string;
@@ -14,9 +15,12 @@ export interface ThemeColors {
 
 interface ThemeContextValue {
   isDark: boolean;
+  isReady: boolean;
   toggleTheme: (isDark: boolean) => void;
   colors: ThemeColors;
 }
+
+const THEME_STORAGE_KEY = 'home-guard-theme';
 
 const LIGHT_COLORS: ThemeColors = {
   background: '#f8fafc',
@@ -46,14 +50,46 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: React.PropsWithChildren) {
   const [isDark, setIsDark] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadTheme = async () => {
+      try {
+        const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+        if (isActive && savedTheme !== null) {
+          setIsDark(savedTheme === 'dark');
+        }
+      } catch (error: unknown) {
+        console.error('Failed to load saved theme preference:', error);
+      } finally {
+        if (isActive) setIsReady(true);
+      }
+    };
+
+    void loadTheme();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const toggleTheme = useCallback((dark: boolean) => {
+    setIsDark(dark);
+    void AsyncStorage.setItem(THEME_STORAGE_KEY, dark ? 'dark' : 'light').catch(
+      (error: unknown) => {
+        console.error('Failed to save theme preference:', error);
+      }
+    );
+  }, []);
 
   const value = useMemo(
     () => ({
       isDark,
-      toggleTheme: setIsDark,
+      isReady,
+      toggleTheme,
       colors: isDark ? DARK_COLORS : LIGHT_COLORS,
     }),
-    [isDark]
+    [isDark, isReady, toggleTheme]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
