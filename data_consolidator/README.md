@@ -6,12 +6,12 @@ FastAPI server that serves generated weather + estate events (schema: `data_temp
 uv sync
 cd data_consolidator
 $DATA_INTERVAL_SECONDS=60 
-uv run uvicorn main:app --reload   # interval defaults to 60 s
+uv run uvicorn main:app --reload --port 8008   # interval defaults to 60 s
 ```
 
 # API Endpoints
 
-**Base URL:** `http://localhost:8000`
+**Base URL:** `http://localhost:8008`
 
 | Method | Endpoint | Description | Required Payload / Parameters |
 | --- | --- | --- | --- |
