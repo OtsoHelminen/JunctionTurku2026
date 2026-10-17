@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { useTheme } from '../../theme/ThemeContext';
 import MapPreview from './MapPreview';
 import type { Coordinates } from './types';
 
@@ -45,6 +46,8 @@ export default function AddPropertyModal({
   onAddressFocus,
   onSelectAddressSuggestion,
 }: AddPropertyModalProps) {
+  const { colors, isDark } = useTheme();
+
   return (
     <Modal
       visible={visible}
@@ -54,20 +57,34 @@ export default function AddPropertyModal({
       navigationBarTranslucent
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView style={styles.modalBackdrop} behavior="padding">
-        <View style={styles.modalCard}>
+      <KeyboardAvoidingView
+        style={[
+          styles.modalBackdrop,
+          { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.65)' : 'rgba(15, 23, 42, 0.45)' },
+        ]}
+        behavior="padding"
+      >
+        <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
           <ScrollView
             style={styles.modalScroll}
             contentContainerStyle={styles.modalContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.modalTitle}>Add a property</Text>
-            <Text style={styles.modalDescription}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Add a property</Text>
+            <Text style={[styles.modalDescription, { color: colors.mutedText }]}>
               Enter the address of the property you want to add.
             </Text>
             <TextInput
-              style={[styles.addressInput, addressError && styles.addressInputError]}
+              style={[
+                styles.addressInput,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.inputBorder,
+                  color: colors.text,
+                },
+                addressError && styles.addressInputError,
+              ]}
               value={address}
               onChangeText={onAddressChange}
               onFocus={onAddressFocus}
@@ -84,18 +101,25 @@ export default function AddPropertyModal({
               accessibilityLabel="Property address"
             />
             {showAddressSuggestions && addressSuggestions.length > 0 && (
-              <View style={styles.addressSuggestions}>
+              <View
+                style={[
+                  styles.addressSuggestions,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
                 {addressSuggestions.map((suggestion) => (
                   <TouchableOpacity
                     key={suggestion}
-                    style={styles.addressSuggestion}
+                    style={[styles.addressSuggestion, { borderBottomColor: colors.border }]}
                     onPress={() => onSelectAddressSuggestion(suggestion)}
                     activeOpacity={0.7}
                     accessibilityRole="button"
                     accessibilityLabel={`Use address ${suggestion}`}
                   >
-                    <Ionicons name="location-outline" size={18} color="#64748b" />
-                    <Text style={styles.addressSuggestionText}>{suggestion}</Text>
+                    <Ionicons name="location-outline" size={18} color={colors.mutedText} />
+                    <Text style={[styles.addressSuggestionText, { color: colors.secondaryText }]}>
+                      {suggestion}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -104,26 +128,32 @@ export default function AddPropertyModal({
             {propertyError ? <Text style={styles.addressError}>{propertyError}</Text> : null}
             {previewCoordinates ? (
               <View style={styles.mapSection}>
-                <Text style={styles.mapTitle}>Location</Text>
+                <Text style={[styles.mapTitle, { color: colors.secondaryText }]}>Location</Text>
                 <MapPreview
                   key={`${previewCoordinates.latitude}-${previewCoordinates.longitude}`}
                   coordinates={previewCoordinates}
                 />
-                <Text style={styles.coordinatesText}>
+                <Text style={[styles.coordinatesText, { color: colors.secondaryText }]}>
                   {`Latitude ${previewCoordinates.latitude.toFixed(4)}, Longitude ${previewCoordinates.longitude.toFixed(4)}`}
                 </Text>
-                <Text style={styles.mapAttribution}>© OpenStreetMap contributors</Text>
+                <Text style={[styles.mapAttribution, { color: colors.mutedText }]}>
+                  © OpenStreetMap contributors
+                </Text>
               </View>
             ) : null}
           </ScrollView>
           <View style={styles.modalActions}>
             <TouchableOpacity
-              style={[styles.modalButton, styles.cancelButton]}
+              style={[
+                styles.modalButton,
+                styles.cancelButton,
+                { backgroundColor: colors.subtleSurface },
+              ]}
               onPress={onClose}
               disabled={isCreating}
               activeOpacity={0.8}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={[styles.cancelButtonText, { color: colors.secondaryText }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[

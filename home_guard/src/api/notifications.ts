@@ -89,7 +89,7 @@ export async function sendTestLocalNotification(): Promise<void> {
     content: {
       title: 'Toimenpidesuositus – Helsinki',
       body: 'Clean the gutters and downspouts before the rain\nSuggested expert: Roofer, approx. 150–400 €',
-      sound: 'default',
+      sound: true,
       priority: AndroidNotificationPriority.MAX,
       data: {
         kind: 'alert',

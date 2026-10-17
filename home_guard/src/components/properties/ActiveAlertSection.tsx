@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { AlertEntry, Urgency } from './alert';
+import { useTheme } from '../../theme/ThemeContext';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -23,6 +24,7 @@ interface ActiveAlertSectionProps {
 }
 
 export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) {
+  const { colors, isDark } = useTheme();
   const [showAll, setShowAll] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const visibleAlerts = showAll ? alerts : alerts.slice(0, COLLAPSED_COUNT);
@@ -40,22 +42,29 @@ export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) 
   return (
     <View style={styles.section}>
       <View style={styles.headingRow}>
-        <Text style={styles.heading}>Active alerts</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>Active alerts</Text>
         {canToggle && (
           <TouchableOpacity
             onPress={() => setShowAll((value) => !value)}
             hitSlop={8}
             accessibilityRole="button"
           >
-            <Text style={styles.showAll}>{showAll ? 'Show less' : 'Show All'}</Text>
+            <Text style={[styles.showAll, { color: colors.secondaryText }]}>
+              {showAll ? 'Show less' : 'Show All'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
 
       {visibleAlerts.length === 0 ? (
-        <View style={styles.emptyCard}>
+        <View
+          style={[
+            styles.emptyCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-          <Text style={styles.emptyText}>No active alerts</Text>
+          <Text style={[styles.emptyText, { color: colors.secondaryText }]}>No active alerts</Text>
         </View>
       ) : (
         visibleAlerts.map((alert) => {
@@ -66,7 +75,10 @@ export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) 
               key={alert.id}
               style={[
                 styles.card,
-                { backgroundColor: urgency.background, borderLeftColor: urgency.accent },
+                {
+                  backgroundColor: isDark ? colors.surface : urgency.background,
+                  borderLeftColor: urgency.accent,
+                },
               ]}
               onPress={() => toggleExpanded(alert.id)}
               activeOpacity={0.85}
@@ -77,11 +89,17 @@ export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) 
             >
               <Ionicons name={urgency.icon} size={26} color={urgency.accent} />
               <View style={styles.cardBody}>
-                <Text style={styles.cardTitle} numberOfLines={isExpanded ? undefined : 2}>
+                <Text
+                  style={[styles.cardTitle, { color: colors.text }]}
+                  numberOfLines={isExpanded ? undefined : 2}
+                >
                   {alert.title}
                 </Text>
                 {alert.subtitle ? (
-                  <Text style={styles.cardSubtitle} numberOfLines={isExpanded ? undefined : 2}>
+                  <Text
+                    style={[styles.cardSubtitle, { color: colors.secondaryText }]}
+                    numberOfLines={isExpanded ? undefined : 2}
+                  >
                     {alert.subtitle}
                   </Text>
                 ) : null}
@@ -93,7 +111,7 @@ export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) 
                 <Ionicons
                   name={isExpanded ? 'chevron-up' : 'chevron-down'}
                   size={18}
-                  color="#64748b"
+                  color={colors.mutedText}
                 />
               </View>
             </TouchableOpacity>

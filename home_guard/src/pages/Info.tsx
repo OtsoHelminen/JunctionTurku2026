@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 type Task = {
   id: string;
@@ -103,6 +104,7 @@ const SEGMENT_COLORS = [
 export default function Info() {
   const [score, setScore] = useState(BASE_SCORE);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const { colors } = useTheme();
 
   const completeTask = (task: Task) => {
     setScore((s) => Math.min(100, s + task.points));
@@ -110,15 +112,20 @@ export default function Info() {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* Fixed header: always visible */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Home Safety Index</Text>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.background, borderBottomColor: colors.border },
+        ]}
+      >
+        <Text style={[styles.title, { color: colors.text }]}>Home Safety Index</Text>
 
         {/* Index bar */}
         <View style={styles.barWrapper}>
           <View style={styles.markerTrack}>
-            <Text style={[styles.marker, { left: `${score}%` }]}>▼</Text>
+            <Text style={[styles.marker, { left: `${score}%`, color: colors.text }]}>▼</Text>
           </View>
           <View style={styles.barRow}>
             <View style={styles.bar}>
@@ -133,11 +140,11 @@ export default function Info() {
                 />
               ))}
             </View>
-            <Text style={styles.score}>{score}%</Text>
+            <Text style={[styles.score, { color: colors.text }]}>{score}%</Text>
           </View>
         </View>
 
-        <Text style={styles.intro}>
+        <Text style={[styles.intro, { color: colors.text }]}>
           The basics of your home are in order. By completing the safety challenges below, you will
           level up your home’s security and accumulate a valuable safety fund for unexpected
           situations.
@@ -151,11 +158,11 @@ export default function Info() {
         showsVerticalScrollIndicator={false}
       >
         {tasks.map((task) => (
-          <View key={task.id} style={styles.card}>
-            <Text style={styles.cardTitle}>
+          <View key={task.id} style={[styles.card, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>
               {task.title} (+{task.points} points)
             </Text>
-            <Text style={styles.cardText}>{task.description}</Text>
+            <Text style={[styles.cardText, { color: colors.mutedText }]}>{task.description}</Text>
             <View style={styles.buttonRow}>
               <Pressable
                 onPress={() => completeTask(task)}
@@ -168,9 +175,13 @@ export default function Info() {
         ))}
 
         {tasks.length === 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>All challenges completed 🎉</Text>
-            <Text style={styles.cardText}>Great work! Your home is as safe as it gets.</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>
+              All challenges completed 🎉
+            </Text>
+            <Text style={[styles.cardText, { color: colors.mutedText }]}>
+              Great work! Your home is as safe as it gets.
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -181,15 +192,12 @@ export default function Info() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f3f3f3',
   },
   header: {
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 4,
-    backgroundColor: '#f3f3f3',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#d4d4d4',
   },
   list: {
     flex: 1,
@@ -202,7 +210,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#111',
     marginBottom: 12,
   },
 
@@ -221,7 +228,6 @@ const styles = StyleSheet.create({
     top: 0,
     marginLeft: -7,
     fontSize: 14,
-    color: '#111',
   },
   barRow: {
     flexDirection: 'row',
@@ -249,13 +255,11 @@ const styles = StyleSheet.create({
   intro: {
     fontSize: 15,
     lineHeight: 21,
-    color: '#111',
     marginBottom: 12,
   },
 
   // Task cards
   card: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 16,
     marginBottom: 16,
@@ -268,13 +272,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111',
     marginBottom: 6,
   },
   cardText: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#6b7280',
   },
   buttonRow: {
     alignItems: 'flex-end',

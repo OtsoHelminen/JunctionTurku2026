@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPriceRange } from './alert';
 import type { ExpertSuggestion } from './alert';
+import { useTheme } from '../../theme/ThemeContext';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -20,25 +21,37 @@ interface OrderHelpSectionProps {
 }
 
 export default function OrderHelpSection({ experts }: OrderHelpSectionProps) {
+  const { colors } = useTheme();
   if (experts.length === 0) return null;
 
   return (
     <View style={styles.section}>
-      <Text style={styles.heading}>Order help</Text>
+      <Text style={[styles.heading, { color: colors.text }]}>Order help</Text>
       {experts.map((expert) => {
         const price = formatPriceRange(expert.priceMin, expert.priceMax);
         return (
           <View key={expert.key} style={styles.row}>
-            <View style={styles.iconTile}>
-              <Ionicons name={iconForProfession(expert.profession)} size={28} color="#334155" />
+            <View
+              style={[
+                styles.iconTile,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons
+                name={iconForProfession(expert.profession)}
+                size={28}
+                color={colors.secondaryText}
+              />
             </View>
             <View style={styles.rowBody}>
-              <Text style={styles.profession}>{expert.profession}</Text>
-              {expert.name ? <Text style={styles.name}>{expert.name}</Text> : null}
+              <Text style={[styles.profession, { color: colors.text }]}>{expert.profession}</Text>
+              {expert.name ? (
+                <Text style={[styles.name, { color: colors.secondaryText }]}>{expert.name}</Text>
+              ) : null}
               {price ? (
                 <View style={styles.priceRow}>
-                  <Ionicons name="cash-outline" size={14} color="#64748b" />
-                  <Text style={styles.price}>{price}</Text>
+                  <Ionicons name="cash-outline" size={14} color={colors.mutedText} />
+                  <Text style={[styles.price, { color: colors.mutedText }]}>{price}</Text>
                 </View>
               ) : null}
             </View>

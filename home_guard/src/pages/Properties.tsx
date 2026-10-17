@@ -11,8 +11,10 @@ import { createRandomCoordinates, mapHouseToEntry } from '../components/properti
 import type { Coordinates, PropertyEntry } from '../components/properties/types';
 import { useAlertNotifications } from '../components/properties/useAlertNotifications';
 import { PROPERTY_ADDRESS_SAMPLES } from '../data/propertyAddressSamples';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function Properties() {
+  const { colors } = useTheme();
   const [properties, setProperties] = useState<PropertyEntry[]>([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(true);
   const [isCreatingProperty, setIsCreatingProperty] = useState(false);
@@ -120,7 +122,10 @@ export default function Properties() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}
+    >
       {/* The selector's horizontal ScrollView grows to fill free space by default.
           Wrapping it keeps it content-height so the sections sit right below it. */}
       <View style={styles.selectorWrapper}>
