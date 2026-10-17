@@ -3,7 +3,7 @@
 #!/usr/bin/env python3
 """Simple interactive CLI for the weather/house API. No extra packages needed.
 
-Usage: python cli.py [--url http://localhost:8000]
+Usage: python cli.py [--url http://localhost:8008]
        (or set API_URL env var)
 """
 import argparse
@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE = "http://localhost:8000"
+BASE = "http://localhost:8008"
 
 
 def call(method, path, body=None, params=None):
