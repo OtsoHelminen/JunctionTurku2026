@@ -40,9 +40,9 @@ def receive_input(request: Request, body: HouseEvents | list[HouseEvents] = Body
     payloads = body if isinstance(body, list) else [body]
     if len(payloads) > MAX_BATCH:
         raise HTTPException(413, f"enintään {MAX_BATCH} kohdetta kerralla")
-    now = int(time.time())  # consolidatorin tapahtumissa ei ole aikaleimaa
+    now = int(time.time())
     with session(settings.db_path) as conn:  # koko erä yhtenä transaktiona
-        accepted = sum(ingest(conn, payload, now) for payload in payloads)
+        accepted = sum(ingest(conn, payload, now, settings) for payload in payloads)
     return {"accepted_readings": accepted, "houses_without_events": sum(not p.data_events for p in payloads)}
 
 

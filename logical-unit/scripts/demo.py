@@ -37,14 +37,20 @@ rng = random.Random(42)
 
 def scenario(minute: int) -> HouseEvents:
     """Consolidatorin vastaus kohteelle 1: normaali -> myrsky lähestyy -> kova myrsky -> tyyntyy."""
-    rain, wind = 1.0, 5.0                          # normaali syyssää
+    rain, wind, extremes = 1.0, 5.0, []            # normaali syyssää
     if 90 <= minute < 185:                         # myrsky lähestyy: sade ja tuuli voimistuvat
         rain = min(14.0, 1.0 + (minute - 90) * 0.3)
         wind = min(18.0, 5.0 + (minute - 90) * 0.3)
+    if 150 <= minute < 185:                        # consolidator: tulvavaroitus vyöhykkeelle
+        extremes = [{"type": "flood", "severity": "warning"}]
     if 185 <= minute < 190:                        # kova myrsky
         rain, wind = 28.0, 24.0
+        extremes = [{"type": "flood", "severity": "severe"}]
     payload = copy.deepcopy(TEMPLATE)
-    for i, day in enumerate(payload["data_events"][0]["weather"]["forecast"]):
+    event = payload["data_events"][0]
+    event["timestamp"] = iso(T0 + minute * 60)
+    event["extremes"] = extremes
+    for i, day in enumerate(event["weather"]["forecast"]):
         day["rainfall_mm"] = round(rain / (i + 1) + rng.uniform(0, 0.3), 1)
         day["wind"]["speed_m_s"] = round(wind / (i + 1) + rng.uniform(0, 0.3), 1)
         day["temperature"] = {"min_c": round(6 + i + rng.uniform(-0.3, 0.3), 1), "max_c": 12.0 + i}
@@ -64,7 +70,7 @@ def main() -> None:
     for minute in range(0, 241):
         now = T0 + minute * 60
         with session(settings.db_path) as conn:          # sama kuin consolidatorin haku
-            ingest(conn, scenario(minute), now)
+            ingest(conn, scenario(minute), now, settings)
         timeline += minute_tick(settings, rules, now)     # joka minuutti
         if minute > 0 and minute % 60 == 0:               # tasatunnein
             timeline += hourly_evaluation(settings, rules, now)

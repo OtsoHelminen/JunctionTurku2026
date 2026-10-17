@@ -78,4 +78,4 @@ def test_invalid_rules_are_rejected(bad):
 
 
 def test_shipped_rules_load(rules):
-    assert {r.id for r in rules} >= {"heavy_rain", "extreme_rain", "storm_wind", "severe_storm", "no_data"}
+    assert {r.id for r in rules} >= {"heavy_rain", "extreme_rain", "storm_wind", "severe_storm", "flood_warning", "forest_fire_warning", "no_data"}

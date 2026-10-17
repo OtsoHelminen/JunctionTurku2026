@@ -27,6 +27,7 @@ class Settings:
     tick_seconds: int                # minuuttiajon väli
     renotify_hours: float            # muuttumaton hälytys muistutetaan näin harvoin
     change_threshold_pct: float      # arvon muutos, joka lasketaan "uudeksi tiedoksi"
+    max_future_skew_seconds: int     # kuinka paljon tulevaisuuteen aikaleima saa olla
     consolidator_enabled: bool       # hae data Data Consolidatorilta
     consolidator_url: str
     consolidator_timeout_seconds: float
@@ -53,6 +54,7 @@ def load_settings() -> Settings:
         tick_seconds=int(os.getenv("TICK_SECONDS", "60")),
         renotify_hours=float(os.getenv("RENOTIFY_HOURS", "6")),
         change_threshold_pct=float(os.getenv("CHANGE_THRESHOLD_PCT", "10")),
+        max_future_skew_seconds=int(os.getenv("MAX_FUTURE_SKEW_SECONDS", "300")),
         consolidator_enabled=_env_bool("CONSOLIDATOR_ENABLED", True),
         consolidator_url=os.getenv("CONSOLIDATOR_URL", "http://localhost:8000"),
         consolidator_timeout_seconds=float(os.getenv("CONSOLIDATOR_TIMEOUT_SECONDS", "10")),

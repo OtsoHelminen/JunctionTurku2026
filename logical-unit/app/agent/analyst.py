@@ -72,7 +72,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "find_resolvers",
-            "description": "Hakee ratkaisijakumppanit kategorialla (esim. katto, kosteus, lvi, automaatio) hälytyksen alueelta.",
+            "description": "Hakee ratkaisijakumppanit kategorialla (esim. katto, kosteus, lvi, palo, automaatio) hälytyksen alueelta.",
             "parameters": {
                 "type": "object",
                 "properties": {"category": {"type": "string"}},
