@@ -11,6 +11,8 @@
 #   temp_forecast_min_c      lowest temperature over the whole forecast
 #   flood_level              consolidator flood warning: 0 none, 1 warning, 2 severe
 #   forest_fire_level        consolidator wildfire warning: 0 none, 1 warning, 2 severe
+#   frostbite_level          consolidator frostbite warning: 0 none, 1 warning, 2 severe
+#   freezing_pipes_level     consolidator freezing pipes warning: 0 none, 1 warning, 2 severe
 #
 # Common fields:
 #   id         unique identifier (playbooks refer to this)
@@ -54,8 +56,8 @@ rules:
     metric: rain_today_mm
     op: ">="
     value: 25
-    aggregate: last
-    window_minutes: 5
+    aggregate: max
+    window_minutes: 10
     severity: critical
     immediate: true
     category: moisture
@@ -107,8 +109,8 @@ rules:
     metric: wind_today_m_s
     op: ">="
     value: 21
-    aggregate: last
-    window_minutes: 5
+    aggregate: max
+    window_minutes: 10
     severity: critical
     immediate: true
     category: roof
@@ -138,18 +140,20 @@ rules:
     window_minutes: 15
     min_points: 3
     severity: high
+    immediate: true
     category: plumbing
     message: "Hard frost at {source_id} today: {value} °C, risk of frozen pipes"
 
-  # --- Consolidator zone warnings (the consolidator handles hysteresis, so last + immediate)
+  # --- Consolidator zone warnings, evaluated every minute. aggregate max over 10 min: a simulation
+  # writes the whole extreme into history at once and the weather returns to normal the next minute.
   - id: flood_warning
     group: flood
     type: threshold
     metric: flood_level
     op: ">="
     value: 1
-    aggregate: last
-    window_minutes: 5
+    aggregate: max
+    window_minutes: 10
     severity: high
     immediate: true
     category: moisture
@@ -161,8 +165,8 @@ rules:
     metric: flood_level
     op: ">="
     value: 2
-    aggregate: last
-    window_minutes: 5
+    aggregate: max
+    window_minutes: 10
     severity: critical
     immediate: true
     category: moisture
@@ -174,8 +178,8 @@ rules:
     metric: forest_fire_level
     op: ">="
     value: 1
-    aggregate: last
-    window_minutes: 5
+    aggregate: max
+    window_minutes: 10
     severity: high
     immediate: true
     category: fire
@@ -187,12 +191,64 @@ rules:
     metric: forest_fire_level
     op: ">="
     value: 2
-    aggregate: last
-    window_minutes: 5
+    aggregate: max
+    window_minutes: 10
     severity: critical
     immediate: true
     category: fire
     message: "Severe wildfire warning in the area of {source_id}"
+
+  - id: freezing_pipes_warning
+    group: freezing_pipes
+    type: threshold
+    metric: freezing_pipes_level
+    op: ">="
+    value: 1
+    aggregate: max
+    window_minutes: 10
+    severity: high
+    immediate: true
+    category: plumbing
+    message: "Freezing pipes warning in the area of {source_id}"
+
+  - id: freezing_pipes_severe
+    group: freezing_pipes
+    type: threshold
+    metric: freezing_pipes_level
+    op: ">="
+    value: 2
+    aggregate: max
+    window_minutes: 10
+    severity: critical
+    immediate: true
+    category: plumbing
+    message: "Severe freezing pipes warning in the area of {source_id}"
+
+  - id: frostbite_warning
+    group: frostbite
+    type: threshold
+    metric: frostbite_level
+    op: ">="
+    value: 1
+    aggregate: max
+    window_minutes: 10
+    severity: high
+    immediate: true
+    category: plumbing
+    message: "Frostbite warning in the area of {source_id}"
+
+  - id: frostbite_severe
+    group: frostbite
+    type: threshold
+    metric: frostbite_level
+    op: ">="
+    value: 2
+    aggregate: max
+    window_minutes: 10
+    severity: critical
+    immediate: true
+    category: plumbing
+    message: "Severe frostbite warning in the area of {source_id}"
 
   # --- Data stopped arriving (Data Consolidator down or no events nearby)
   - id: no_data
