@@ -1,3 +1,5 @@
+
+
 """SQLite access layer for houses.
 
 The database file lives next to this module by default; override the path
@@ -95,3 +97,51 @@ def events_within_radius(
         if haversine_km(latitude, longitude, ev["location"]["latitude"], ev["location"]["longitude"])
         <= radius_km
     ]
+
+
+# --- Push tokens -------------------------------------------------------------
+
+PUSH_TOKENS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS push_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT NOT NULL UNIQUE,
+    platform TEXT,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+
+def ensure_push_tokens_table(conn: sqlite3.Connection) -> None:
+    conn.execute(PUSH_TOKENS_SCHEMA)
+    conn.commit()
+
+
+def upsert_push_token(conn: sqlite3.Connection, token: str, platform: str | None) -> None:
+    """Insert a token, or only refresh its timestamp (and platform) if it already exists."""
+    conn.execute(
+        """
+        INSERT INTO push_tokens (token, platform, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(token) DO UPDATE SET
+            updated_at = CURRENT_TIMESTAMP,
+            platform = COALESCE(excluded.platform, push_tokens.platform)
+        """,
+        (token, platform),
+    )
+    conn.commit()
+
+
+def delete_push_token(conn: sqlite3.Connection, token: str) -> None:
+    conn.execute("DELETE FROM push_tokens WHERE token = ?", (token,))
+    conn.commit()
+
+
+def get_push_token(conn: sqlite3.Connection, token: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        "SELECT * FROM push_tokens WHERE token = ?", (token,)).fetchone()
+    return dict(row) if row else None
+
+
+def list_push_tokens(conn: sqlite3.Connection) -> list[str]:
+    rows = conn.execute("SELECT token FROM push_tokens ORDER BY id").fetchall()
+    return [r["token"] for r in rows]

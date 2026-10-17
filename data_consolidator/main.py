@@ -1,3 +1,5 @@
+
+
 """FastAPI server exposing generated data events.
 
 Run:  DATA_INTERVAL_SECONDS=60 uvicorn main:app --reload
@@ -7,15 +9,33 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import json
 import os
+import re
+import urllib.request
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, Query, Response
+from pydantic import BaseModel, Field, field_validator
 
 from data_generator import HISTORY_SIZE, DataGenerator
-from db.database import add_house, connect, events_within_radius, get_house, list_houses
+from db.database import (
+    add_house,
+    connect,
+    delete_push_token,
+    ensure_push_tokens_table,
+    events_within_radius,
+    get_house,
+    get_push_token,
+    list_houses,
+    list_push_tokens,
+    upsert_push_token,
+)
+
+EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+EXPO_BATCH_SIZE = 100  # Expo accepts at most 100 messages per request
+EXPO_TOKEN_RE = re.compile(r"^Expo(nent)?PushToken\[[^\[\]]+\]$")
 
 # Radius around a house within which weather events are considered local.
 HOUSE_RADIUS_KM = 25.0
@@ -39,6 +59,69 @@ class HouseCreate(BaseModel):
     floor_area_m2: float | None = None
     number_of_floors: int | None = None
     condition: str | None = None
+
+
+class DeviceCreate(BaseModel):
+    """Payload for POST /app/devices."""
+
+    token: str
+    platform: Literal["ios", "android"] | None = None
+
+    @field_validator("token")
+    @classmethod
+    def _check_token(cls, v: str) -> str:
+        v = v.strip()
+        if not EXPO_TOKEN_RE.match(v):
+            raise ValueError("token must look like ExponentPushToken[...]")
+        return v
+
+
+class NotificationPayload(BaseModel):
+    """Optional body for POST /app/notify and /app/notify/{token}."""
+
+    title: str | None = "Data updated"
+    body: str | None = "New data is available."
+    sound: str | None = "default"
+    data: dict[str, Any] | None = None
+
+
+def send_expo_push(tokens: list[str], payload: NotificationPayload) -> list[dict[str, Any]]:
+    """Send one message per token to Expo; returns the push tickets in token order."""
+    tickets: list[dict[str, Any]] = []
+    for i in range(0, len(tokens), EXPO_BATCH_SIZE):
+        messages = [
+            {"to": t, **payload.model_dump(exclude_none=True)}
+            for t in tokens[i: i + EXPO_BATCH_SIZE]
+        ]
+        req = urllib.request.Request(
+            EXPO_PUSH_URL,
+            data=json.dumps(messages).encode(),
+            headers={
+                "Accept": "application/json",
+                "Accept-Encoding": "identity",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                result = json.loads(resp.read().decode())
+        except Exception as exc:  # network error or non-2xx from Expo
+            logger.error("Expo push request failed", exc_info=exc)
+            raise HTTPException(
+                status_code=502, detail="Expo push service request failed") from exc
+        tickets.extend(result.get("data", []))
+    return tickets
+
+
+def prune_unregistered(db, tokens: list[str], tickets: list[dict[str, Any]]) -> list[str]:
+    """Delete tokens whose ticket says DeviceNotRegistered; returns the removed tokens."""
+    removed = []
+    for token, ticket in zip(tokens, tickets):
+        if ticket.get("status") == "error" and (ticket.get("details") or {}).get("error") == "DeviceNotRegistered":
+            delete_push_token(db, token)
+            removed.append(token)
+    return removed
 
 
 def get_interval() -> float:
@@ -67,6 +150,7 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         gen.initialize_history(HISTORY_SIZE)
         app.state.generator = gen
         db = connect()
+        ensure_push_tokens_table(db)
         app.state.db = db
         app.state.default_house_id = add_house(
             db, gen.estate, DEFAULT_HOUSE_LAT, DEFAULT_HOUSE_LON, user_id="system"
@@ -139,6 +223,44 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
             HOUSE_RADIUS_KM,
         )
         return {"house": house, "radius_km": HOUSE_RADIUS_KM, "data_events": events}
+
+    # --- Push notifications -------------------------------------------------
+
+    @app.post("/app/devices", status_code=204)
+    def register_device(payload: DeviceCreate) -> Response:
+        """Register an Expo push token (re-registering only refreshes updated_at)."""
+        upsert_push_token(app.state.db, payload.token, payload.platform)
+        return Response(status_code=204)
+
+    @app.delete("/app/devices", status_code=204)
+    def unregister_device(token: str = Query(min_length=1)) -> Response:
+        """Remove a token. Idempotent: succeeds even if the token is unknown."""
+        delete_push_token(app.state.db, token)
+        return Response(status_code=204)
+
+    @app.post("/app/notify/{token}")
+    def notify_token(token: str, payload: NotificationPayload | None = None) -> dict[str, Any]:
+        """Send a push notification to one registered device.
+
+        The token contains brackets, so URL-encode it:
+        /app/notify/ExponentPushToken%5Bxxxx%5D
+        """
+        if get_push_token(app.state.db, token) is None:
+            raise HTTPException(
+                status_code=404, detail="Device token not registered")
+        tickets = send_expo_push([token], payload or NotificationPayload())
+        removed = prune_unregistered(app.state.db, [token], tickets)
+        return {"sent": 1, "tickets": tickets, "removed_tokens": removed}
+
+    @app.post("/app/notify")
+    def notify_all(payload: NotificationPayload | None = None) -> dict[str, Any]:
+        """Send a push notification to every registered device."""
+        tokens = list_push_tokens(app.state.db)
+        if not tokens:
+            return {"sent": 0, "tickets": [], "removed_tokens": []}
+        tickets = send_expo_push(tokens, payload or NotificationPayload())
+        removed = prune_unregistered(app.state.db, tokens, tickets)
+        return {"sent": len(tokens), "tickets": tickets, "removed_tokens": removed}
 
     return app
 
