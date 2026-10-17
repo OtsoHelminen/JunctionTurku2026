@@ -32,6 +32,23 @@ RAIN_BOUNDS = (0.0, 50.0)
 RAIN_STEP = 1.5
 WIND_BOUNDS = (0.0, 25.0)
 WIND_STEP = 1.0
+# Alert thresholds (simulation-tuned, loosely after FMI warning levels).
+FLOOD_DAY_MM = 20.0          # one day's rainfall
+FLOOD_3DAY_MM = 45.0         # 3-day forecast total
+FLOOD_SEVERE_DAY_MM = 35.0
+FLOOD_CLEAR_MM = 10.0        # hysteresis: alert stays until rain drops below this
+FIRE_MIN_TEMP_C = 22.0       # today's max temperature
+FIRE_MAX_RAIN_MM = 0.5       # "dry" day
+# consecutive dry ticks needed (soil/vegetation drying)
+FIRE_DRY_TICKS = 30
+FIRE_SEVERE_TEMP_C = 27.0
+FIRE_CLEAR_TEMP_C = 19.0
+STORM_RAIN_MM = 30.0
+RAIN_FRONT_CHANCE = 0.002     # per zone per tick: a slow heavy-rain front arrives
+RAIN_FRONT_TARGET_MM = 28.0
+DRY_SPELL_CHANCE = 0.003      # per zone per tick: a high-pressure dry spell sets in
+# below zero so rain settles at 0 mm         # storms bring very heavy rain -> flood alert
+DRY_SPELL_TARGET_MM = -1.0
 ESTATE = {
     'construction_year': 1978, 'renovation_years': [1998, 2015],
     'house_type': 'detached', 'shape': 'rectangular', 'floor_area_m2': 142.5,
@@ -94,6 +111,7 @@ class DataGenerator:
                                  'max_x': (col+1) * ZONE_SIZE_M, 'max_y': (row+1) * ZONE_SIZE_M},
                     'days': [{'min_c': 8.0+i+self._rng.uniform(-2, 2), 'spread': 6.0,
                               'rain': 0.0, 'wind': 4.0, 'dir': 4} for i in range(FORECAST_DAYS)],
+                    'dry_ticks': 0, 'alerts': {}, 'front': 0, 'dry_spell': 0,
                 }
 
     @property
@@ -131,8 +149,21 @@ class DataGenerator:
         with self._lock:
             self._storm_remaining = events
 
-    def _step(self, days: list[dict[str, Any]], storm: bool) -> None:
+    def _step(self, zone: dict[str, Any], storm: bool) -> None:
         r = self._rng
+        days = zone['days']
+        if zone['front'] > 0:
+            zone['front'] -= 1
+        elif not storm and r.random() < RAIN_FRONT_CHANCE:
+            zone['front'] = r.randint(20, 40)
+        if zone['dry_spell'] > 0:
+            zone['dry_spell'] -= 1
+        elif not storm and not zone['front'] and r.random() < DRY_SPELL_CHANCE:
+            zone['dry_spell'] = r.randint(60, 120)
+        if storm:
+            zone['front'] = zone['dry_spell'] = 0
+        rain_target = (RAIN_FRONT_TARGET_MM if zone['front']
+                       else DRY_SPELL_TARGET_MM if zone['dry_spell'] else 2.0)
         for d in days:
             d['min_c'] = _clamp(
                 d['min_c'] + r.uniform(-TEMP_STEP, TEMP_STEP), *TEMP_BOUNDS)
@@ -140,12 +171,15 @@ class DataGenerator:
                 d['spread'] + r.uniform(-SPREAD_STEP, SPREAD_STEP), *SPREAD_BOUNDS)
             if storm:
                 d['rain'] = _clamp(
-                    max(10.0, d['rain'] + r.uniform(3, 8)), *RAIN_BOUNDS)
+                    max(STORM_RAIN_MM, d['rain'] + r.uniform(3, 8)), *RAIN_BOUNDS)
                 d['wind'] = _clamp(
                     max(17.0, d['wind'] + r.uniform(2, 5)), *WIND_BOUNDS)
             else:
                 # Bounded, mean-reverting walks avoid remaining at storm maxima.
-                d['rain'] = _clamp(d['rain'] + _clamp((2-d['rain'])*0.1 + r.uniform(-1, 1),
+                # Dry spells (high pressure) keep only light, mostly-drying noise.
+                rain_noise = r.uniform(-0.3,
+                                       0.2) if zone['dry_spell'] else r.uniform(-1, 1)
+                d['rain'] = _clamp(d['rain'] + _clamp((rain_target-d['rain'])*0.1 + rain_noise,
                                                       -RAIN_STEP, RAIN_STEP), *RAIN_BOUNDS)
                 d['wind'] = _clamp(d['wind'] + _clamp((4-d['wind'])*0.1 + r.uniform(-0.7, 0.7),
                                                       -WIND_STEP, WIND_STEP), *WIND_BOUNDS)
@@ -165,6 +199,48 @@ class DataGenerator:
                              'wind': {'speed_m_s': round(d['wind'], 1), 'direction': WIND_DIRECTIONS[d['dir']]},
                              'conditions': _conditions(rain, high)})
         return {'forecast': forecast}
+
+    def _update_extremes(self, zone: dict[str, Any], forecast: list[dict[str, Any]],
+                         timestamp: datetime) -> list[dict[str, Any]]:
+        """Derive active alerts from current weather plus accumulated dryness."""
+        today = forecast[0]
+        rain = today['rainfall_mm']
+        total = round(sum(d['rainfall_mm'] for d in forecast), 1)
+        high = today['temperature']['max_c']
+        wind = today['wind']['speed_m_s']
+        zone['dry_ticks'] = zone['dry_ticks'] + \
+            1 if rain <= FIRE_MAX_RAIN_MM else 0
+        alerts = zone['alerts']
+        zid = zone['id']
+
+        flooding = rain >= FLOOD_DAY_MM or total >= FLOOD_3DAY_MM
+        if 'flood' in alerts and not flooding:
+            flooding = rain >= FLOOD_CLEAR_MM
+        if flooding and high > 0:
+            severity = 'severe' if rain >= FLOOD_SEVERE_DAY_MM else 'warning'
+            alerts['flood'] = {
+                'type': 'flood', 'severity': severity, 'zone_id': zid,
+                'started_at': alerts.get('flood', {}).get('started_at', timestamp),
+                'description': f'Flood risk: {rain} mm rain today, {total} mm over {FORECAST_DAYS} days',
+                'metrics': {'rainfall_today_mm': rain, 'rainfall_3day_mm': total}}
+        else:
+            alerts.pop('flood', None)
+
+        burning = (
+            high >= FIRE_MIN_TEMP_C and zone['dry_ticks'] >= FIRE_DRY_TICKS)
+        if 'forest_fire' in alerts and not burning:
+            burning = high >= FIRE_CLEAR_TEMP_C and rain <= FIRE_MAX_RAIN_MM
+        if burning:
+            severity = 'severe' if high >= FIRE_SEVERE_TEMP_C or wind >= 10 else 'warning'
+            alerts['forest_fire'] = {
+                'type': 'forest_fire', 'severity': severity, 'zone_id': zid,
+                'started_at': alerts.get('forest_fire', {}).get('started_at', timestamp),
+                'description': f'Forest fire risk: {high} °C, dry for {zone["dry_ticks"]} updates, wind {wind} m/s',
+                'metrics': {'max_temperature_c': high, 'dry_ticks': zone['dry_ticks'],
+                            'wind_speed_m_s': wind, 'rainfall_today_mm': rain}}
+        else:
+            alerts.pop('forest_fire', None)
+        return [copy.deepcopy(a) for a in alerts.values()]
 
     def _zone_id(self, location: dict[str, float]) -> str:
         x, y = _TO_GRID.transform(location['longitude'], location['latitude'])
@@ -191,7 +267,8 @@ class DataGenerator:
         zone_id = self._zone_id(location)
         return {'timestamp': frame['timestamp'], 'location': location,
                 'zone': self._zone_metadata(zone_id), 'storm': frame['storm'],
-                'weather': copy.deepcopy(frame['weather'][zone_id]), 'estate': copy.deepcopy(house)}
+                'weather': copy.deepcopy(frame['weather'][zone_id]),
+                'extremes': copy.deepcopy(frame['extremes'][zone_id]), 'estate': copy.deepcopy(house)}
 
     def generate_events(self) -> list[dict[str, Any]]:
         """Advance every zone once; produce regional and per-house events."""
@@ -203,10 +280,13 @@ class DataGenerator:
             if storm:
                 self._storm_remaining -= 1
             weather = {}
+            extremes = {}
             events = []
             for zone_id, zone in self._zones.items():
-                self._step(zone['days'], storm)
+                self._step(zone, storm)
                 weather[zone_id] = self._weather(zone['days'], self._timestamp)
+                extremes[zone_id] = self._update_extremes(
+                    zone, weather[zone_id]['forecast'], self._timestamp)
                 b = zone['bounds_m']
                 # Boundary zones are clipped to the configured geographic extent.
                 for _ in range(500):
@@ -215,12 +295,13 @@ class DataGenerator:
                     if self.contains(lat, lon):
                         event = {'timestamp': self._timestamp, 'location': {'latitude': lat, 'longitude': lon},
                                  'zone': self._zone_metadata(zone_id), 'storm': storm,
-                                 'weather': copy.deepcopy(weather[zone_id]), 'estate': None}
+                                 'weather': copy.deepcopy(weather[zone_id]),
+                                 'extremes': copy.deepcopy(extremes[zone_id]), 'estate': None}
                         events.append(event)
                         self.history.append(event)
                         break
-            frame = {'timestamp': self._timestamp,
-                     'storm': storm, 'weather': weather}
+            frame = {'timestamp': self._timestamp, 'storm': storm,
+                     'weather': weather, 'extremes': extremes}
             self._frames.append(frame)
             for house_id, house in self._houses.items():
                 self._house_history[house_id].append(
