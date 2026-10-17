@@ -164,11 +164,10 @@ class DataGenerator:
         if isinstance(events, bool) or not isinstance(events, int) or events < 0:
             raise ValueError('events must be a non-negative integer')
         with self._lock:
-            # +1 because the immediate first tick also consumes the counter,
-            # so exactly `events` storm ticks follow after this call.
-            self._storm_remaining = events + 1 if events else 0
+            self._storm_remaining = events
             if events:
-                self.generate_events()
+                self._overwrite_history()
+                self._generate_forced(events)
 
     def force_forest_fire(self, events: int = 60) -> None:
         """Start a heat wave with drought over every zone right now.
@@ -180,10 +179,11 @@ class DataGenerator:
         if isinstance(events, bool) or not isinstance(events, int) or events < 0:
             raise ValueError('events must be a non-negative integer')
         with self._lock:
-            self._fire_remaining = events + 1 if events else 0
+            self._fire_remaining = events
             self._frost_remaining = 0  # heat wave and cold snap exclude each other
             if events:
-                self.generate_events()
+                self._overwrite_history()
+                self._generate_forced(events)
 
     def force_frost(self, events: int = 60) -> None:
         """Start a severe cold snap over every zone right now.
@@ -195,10 +195,50 @@ class DataGenerator:
         if isinstance(events, bool) or not isinstance(events, int) or events < 0:
             raise ValueError('events must be a non-negative integer')
         with self._lock:
-            self._frost_remaining = events + 1 if events else 0
+            self._frost_remaining = events
             self._fire_remaining = 0  # cold snap and heat wave exclude each other
             if events:
-                self.generate_events()
+                self._overwrite_history()
+                self._generate_forced(events)
+
+    def _overwrite_history(self) -> None:
+        """Drop all stored events so the forced extreme events replace them.
+
+        Regional history, shared frames and every house's local history are
+        cleared; the immediate forced tick and following ticks refill them,
+        so /app/data_events soon shows only the simulated extreme weather.
+        """
+        self.history.clear()
+        self._frames.clear()
+        for history in self._house_history.values():
+            history.clear()
+
+    def _generate_forced(self, events: int) -> None:
+        """Generate `events` forced ticks at once so history is instantly full.
+
+        The timeline is shifted back first, so the newest forced event lands
+        at the current moment and the batch spans the previous `events`
+        minutes. The last tick triggers the mild-baseline reset inside
+        generate_events, so normal weather resumes from there.
+        """
+        if self._timestamp is not None:
+            self._timestamp -= timedelta(minutes=events)
+        for _ in range(events):
+            self.generate_events()
+
+    def _reset_zones_mild(self) -> None:
+        """Restart the random walk from a mild baseline after a forced event.
+
+        Without this the walk would decay slowly from storm/frost/heat
+        extremes; instead the next normal tick starts near 8 °C, no rain,
+        light wind, and all alert counters are cleared.
+        """
+        for zone in self._zones.values():
+            for i, d in enumerate(zone['days']):
+                d.update(min_c=8.0 + i + self._rng.uniform(-2, 2), spread=6.0,
+                         rain=0.0, wind=4.0, dir=4)
+            zone.update(dry_ticks=0, cold_ticks=0, frost_ticks=0,
+                        alerts={}, front=0, dry_spell=0)
 
     def _step(self, zone: dict[str, Any], storm: bool, fire: bool = False,
               frost: bool = False) -> None:
@@ -381,12 +421,18 @@ class DataGenerator:
             storm = self._storm_remaining > 0
             fire = self._fire_remaining > 0
             frost = self._frost_remaining > 0
+            # True when this tick is the last forced one; the walk then
+            # restarts from a mild baseline for the following normal ticks.
+            forced_ending = False
             if storm:
                 self._storm_remaining -= 1
+                forced_ending = forced_ending or self._storm_remaining == 0
             if fire:
                 self._fire_remaining -= 1
+                forced_ending = forced_ending or self._fire_remaining == 0
             if frost:
                 self._frost_remaining -= 1
+                forced_ending = forced_ending or self._frost_remaining == 0
             weather = {}
             extremes = {}
             events = []
@@ -414,6 +460,8 @@ class DataGenerator:
             for house_id, house in self._houses.items():
                 self._house_history[house_id].append(
                     self._house_event(house, frame))
+            if forced_ending:
+                self._reset_zones_mild()
             return copy.deepcopy(events)
 
     def generate_event(self) -> dict[str, Any]:
