@@ -61,6 +61,11 @@ class DataGenerator:
             for i in range(FORECAST_DAYS)
         ]
         self.history: deque[dict[str, Any]] = deque(maxlen=HISTORY_SIZE)
+        self._storm_remaining = 0
+
+    def force_storm(self, events: int = 30) -> None:
+        """Make the next `events` generated events stormy: heavy rain and wind."""
+        self._storm_remaining = max(0, events)
 
     @property
     def estate(self) -> dict[str, Any]:
@@ -68,7 +73,19 @@ class DataGenerator:
 
     def _step(self) -> None:
         r = self._rng
+        storm = self._storm_remaining > 0
+        if storm:
+            self._storm_remaining -= 1
         for d in self._days:
+            if storm:
+                d["rain"] = _clamp(
+                    d["rain"] + r.uniform(5.0, 15.0), *RAIN_BOUNDS)
+                d["wind"] = _clamp(
+                    d["wind"] + r.uniform(8.0, 20.0), *WIND_BOUNDS)
+                if r.random() < 0.3:
+                    d["min_c"] = _clamp(
+                        d["min_c"] - r.uniform(0.0, TEMP_STEP), *TEMP_BOUNDS)
+                continue
             d["min_c"] = _clamp(
                 d["min_c"] + r.uniform(-TEMP_STEP, TEMP_STEP), *TEMP_BOUNDS)
             d["spread"] = _clamp(

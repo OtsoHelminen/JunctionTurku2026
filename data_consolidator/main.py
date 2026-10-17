@@ -1,6 +1,6 @@
 """FastAPI server exposing generated data events.
 
-Run:  $DATA_INTERVAL_SECONDS=60 uvicorn main:app --reload
+Run:  DATA_INTERVAL_SECONDS=60 uvicorn main:app --reload
 """
 
 from __future__ import annotations
@@ -14,6 +14,11 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 
 from data_generator import HISTORY_SIZE, DataGenerator
+from db.database import add_house, connect, get_house, list_alerts, list_houses, record_alerts
+
+# Coordinates of the generated estate (Koivukuja 12, 00930 Helsinki, Finland).
+DEFAULT_HOUSE_LAT = 60.20
+DEFAULT_HOUSE_LON = 24.94
 
 logger = logging.getLogger("data_consolidator")
 
@@ -43,6 +48,10 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         gen = DataGenerator(seed=seed)
         gen.initialize_history(HISTORY_SIZE)
         app.state.generator = gen
+        db = connect()
+        app.state.db = db
+        app.state.default_house_id = add_house(
+            db, gen.estate, DEFAULT_HOUSE_LAT, DEFAULT_HOUSE_LON)
         task = asyncio.create_task(_generate_loop(gen, period))
 
         def _on_done(t: asyncio.Task) -> None:
@@ -55,6 +64,7 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         try:
             yield
         finally:
+            db.close()
             task.cancel()
             try:
                 await task
@@ -74,6 +84,35 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
             raise HTTPException(
                 status_code=503, detail="Event history incomplete")
         return {"data_events": events}
+
+    @app.get("/app/simulate/storm")
+    def simulate_storm() -> dict[str, Any]:
+        task: asyncio.Task = app.state.task
+        if task.done() and not task.cancelled() and task.exception() is not None:
+            raise HTTPException(
+                status_code=503, detail="Data generator failed")
+        app.state.generator.force_storm(30)
+        return {"status": "storm_simulation_started", "storm_events": 30}
+
+    @app.get("/app/houses")
+    def houses() -> dict[str, Any]:
+        return {"houses": list_houses(app.state.db)}
+
+    @app.get("/app/houses/{house_id}/data_events")
+    def house_data_events(house_id: int) -> dict[str, Any]:
+        """Weather events for the area of the given house (matched by its location)."""
+        house = get_house(app.state.db, house_id)
+        if house is None:
+            raise HTTPException(status_code=404, detail="House not found")
+        events = app.state.generator.latest(HISTORY_SIZE)
+        record_alerts(app.state.db, house_id, events)
+        return {"house": house, "data_events": events}
+
+    @app.get("/app/houses/{house_id}/alerts")
+    def house_alerts(house_id: int) -> dict[str, Any]:
+        if get_house(app.state.db, house_id) is None:
+            raise HTTPException(status_code=404, detail="House not found")
+        return {"alerts": list_alerts(app.state.db, house_id)}
 
     return app
 

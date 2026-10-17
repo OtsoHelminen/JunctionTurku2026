@@ -3,10 +3,29 @@
 FastAPI server that serves generated weather + estate events (schema: `data_template.json`).
 
 ```bash
-pip install fastapi uvicorn
+uv sync
 cd data_consolidator
-DATA_INTERVAL_SECONDS=60 uvicorn main:app   # interval defaults to 60 s
+$DATA_INTERVAL_SECONDS=60 
+uv run uvicorn main:app --reload   # interval defaults to 60 s
 curl localhost:8000/app/data_events         # latest 60 events, newest first
 ```
 
-Tests: `pip install pytest httpx && python -m pytest tests`
+## Database (SQLite)
+
+The `db/` folder holds an SQLite database (`db/consolidator.db`, created on
+first use; override with `DATABASE_PATH`) with two tables:
+
+- **houses** — tracked estates with their location (latitude/longitude).
+- **alerts** — warnings derived from a house's weather forecast
+  (`heavy_rain` ≥ 10 mm, `storm_wind` ≥ 15 m/s).
+
+The server seeds the generated estate as a house on startup. Endpoints:
+
+```bash
+curl localhost:8000/app/houses                      # tracked houses
+curl localhost:8000/app/houses/1/data_events        # weather events for that house's area; also records alerts
+curl localhost:8000/app/houses/1/alerts             # alerts raised for the house
+curl localhost:8000/app/simulate/storm              # next 30 events are stormy (heavy rain + wind)
+```
+
+Seed manually: `python -m db.seed`
