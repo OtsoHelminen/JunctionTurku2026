@@ -46,9 +46,13 @@ def build_notification(event: dict[str, Any]) -> dict[str, Any]:
         severity=SEVERITY_FI.get(alert["severity"], alert["severity"]),
         area=alert.get("area") or alert["source_id"],
     )
+    expert = analysis.get("suggested_expert") or None
     body = alert["message"]
     if event_type == "analyzed" and analysis.get("recommendation"):
         body = analysis["recommendation"]
+        if expert:
+            price = expert["price_estimate"]
+            body += f"\nSuggested expert: {expert['profession']}, approx. {price['min_eur']}–{price['max_eur']} €"
     house_id = alert["source_id"].removeprefix("house-")
     return {
         "title": title,
@@ -70,6 +74,13 @@ def build_notification(event: dict[str, Any]) -> dict[str, Any]:
             "message": alert["message"][:300],
             "recommendation": (analysis.get("recommendation") or "")[:500] or None,
             "urgency": analysis.get("urgency"),
+            "expert": {
+                "registered": expert["registered"],
+                "profession": expert["profession"],
+                "example_name": expert["example_name"],
+                "price_min_eur": expert["price_estimate"]["min_eur"],
+                "price_max_eur": expert["price_estimate"]["max_eur"],
+            } if expert else None,
             "created_at": event["created_at"],
         },
     }

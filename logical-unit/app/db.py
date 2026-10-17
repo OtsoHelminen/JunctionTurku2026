@@ -51,5 +51,8 @@ def init_db(db_path: str) -> None:
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(sources)")}
         if "estate" not in columns:  # vanha kanta ennen Data Consolidator -integraatiota
             conn.execute("ALTER TABLE sources ADD COLUMN estate TEXT")
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(playbooks)")}
+        if "expert" not in columns:  # vanha kanta ennen asiantuntijaehdotuksia
+            conn.execute("ALTER TABLE playbooks ADD COLUMN expert TEXT")
     finally:
         conn.close()

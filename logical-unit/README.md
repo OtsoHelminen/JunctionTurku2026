@@ -17,8 +17,8 @@ Oletusosoite: `http://localhost:8001`. Kaikki aikaleimat ovat ISO 8601 -muotoa U
 ## Käynnistys
 
 ```bash
-# terminaali 1: Data Consolidator (portti 8000)
-cd data_consolidator && uv run uvicorn main:app
+# terminaali 1: Data Consolidator (portti 8008)
+cd data_consolidator && uv run uvicorn main:app --host 0.0.0.0 --port 8008
 
 # terminaali 2: Logical Unit (portti 8001)
 cd logical-unit
@@ -57,9 +57,17 @@ Lähetettävä runko (consolidatorin `NotificationPayload`):
     "message": "Kova myrsky kohteessa house-1: tuuli 24.5 m/s",
     "recommendation": null,
     "urgency": null,
+    "expert": null,
     "created_at": "2026-10-17T10:05:00Z"
   }
 }
+```
+
+`analyzed`-ilmoituksessa `data.expert` sisältää asiantuntijaehdotuksen (ks. [`suggested_expert`](#suggested_expert)):
+
+```json
+"expert": {"registered": false, "profession": "Roofer", "example_name": "Example Roofing Ltd",
+           "price_min_eur": 200, "price_max_eur": 600}
 ```
 
 **Näin App tunnistaa ilmoituksen:** `data.kind == "alert"`. Saman hälytyksen ilmoituksilla on
@@ -70,7 +78,7 @@ sama `alert_id`, joten App voi päivittää olemassa olevaa hälytystä uuden lu
 |---|---|---|
 | `created` | `<Vakavuus> hälytys – <alue>` | hälytyksen viesti |
 | `escalated` | `Hälytys paheni: <Vakavuus> – <alue>` | hälytyksen viesti |
-| `analyzed` | `Toimenpidesuositus – <alue>` | Qwenin tai pelikirjan suositus (myös `data.recommendation`) |
+| `analyzed` | `Toimenpidesuositus – <alue>` | Qwenin tai pelikirjan suositus (myös `data.recommendation`) ja rivi `Suggested expert: <ammatti>, approx. <min>–<max> €` |
 | `resolved` | `Tilanne ohi – <alue>` | hälytyksen viesti, ei ääntä |
 
 Vakavuus suomeksi: Tiedote, Vähäinen, Kohtalainen, Vakava, Kriittinen.
@@ -243,23 +251,34 @@ curl -X POST localhost:8001/admin/evaluate
     "status": "done",
     "source": "llm",
     "model": "qwen3.8-flash",
-    "assessment": "Vuonna 1978 rakennetun omakotitalon kellari ja salaojat ovat alttiita...",
-    "likely_cause": "Rankkasade ylittää salaojien ja sadevesijärjestelmän kapasiteetin...",
-    "recommendation": "Siirrä kellarin arvotavarat ylemmäs ja tarkista tulvapumppu...",
+    "assessment": "The basement and drainage of this 1978 detached house are vulnerable...",
+    "likely_cause": "Heavy rain exceeds the capacity of the drains and stormwater system...",
+    "recommendation": "Move valuables out of the basement and check the flood pump...",
     "urgency": "immediate",
     "confidence": "medium",
     "playbook_actions": [
-      "Siirrä kellarista ja maanvaraisista tiloista arvotavarat ylemmäs",
-      "Tarkista salaojakaivot ja mahdollisen tulvapumpun toiminta"
+      "Move valuables from the basement and ground-level rooms to higher floors",
+      "Check the drainage wells and that the flood pump (if any) works"
     ],
     "suggested_resolvers": [
       {
         "id": 6, "name": "Salaojat ja Tulvasuojaus Esimerkki Oy", "category": "kosteus",
         "areas": ["Helsinki", "Espoo", "Vantaa"], "on_call": true, "priority": 5,
-        "notes": "Tulvapumput ja hiekkasäkit päivystyksenä",
+        "notes": "On-call flood pumps and sandbags",
         "phone": "+358 40 000 0007", "email": "salaoja@example.com"
       }
     ],
+    "suggested_expert": {
+      "registered": false,
+      "source": "llm",
+      "profession": "Drainage and flood protection specialist",
+      "example_name": "Example Drainage Services Ltd",
+      "reason": "The drainage wells and flood pump should be checked before the rain peaks",
+      "price_estimate": {
+        "min_eur": 300, "max_eur": 1200, "currency": "EUR", "includes_vat": true,
+        "basis": "Drainage well inspection, pump check or rental"
+      }
+    },
     "generated_at": "2026-10-17T10:05:31Z"
   }
 }
@@ -299,8 +318,29 @@ curl -X POST localhost:8001/admin/evaluate
 | `confidence` | `low`, `medium`, `high` (vain `llm`) |
 | `playbook_actions` | säännön vakiotoimenpiteet |
 | `suggested_resolvers` | ehdotetut yritykset yhteystietoineen; malli voi ehdottaa vain kannassa olevia |
+| `suggested_expert` | asiantuntijaehdotus hinta-arvioineen, ks. alla |
 
 `analysis`-kentän tekstikentät voivat olla `null`, joten tarkista ne ennen näyttämistä.
+Agentin tekstit (`assessment`, `likely_cause`, `recommendation`) ja pelikirjojen suositukset ovat englanniksi.
+
+#### suggested_expert
+
+Ehdotus siitä, millainen asiantuntija työn tekisi, ja arvio sen hinnasta. **Toistaiseksi ehdotus on
+esimerkki** (`registered: false`): yrityksen nimi on keksitty, eikä yhteystietoja ole. Myöhemmin
+tilalle tulee kumppanitietokannasta haettu rekisteröity yritys (`registered: true`).
+
+| Kenttä | Kuvaus |
+|---|---|
+| `registered` | `false` = kielimallin tai pelikirjan esimerkki, ei oikea kumppani |
+| `source` | `llm` (Qwenin arvio tälle kohteelle) tai `playbook` (säännön vakioarvio, kun Qwen ei ole käytössä tai ei antanut ehdotusta) |
+| `profession` | asiantuntijan ammatti, esim. `Roofer`, `Plumber` |
+| `example_name` | keksitty esimerkkinimi, esim. `Example Roofing Ltd` |
+| `reason` | miksi juuri tämä asiantuntija |
+| `price_estimate.min_eur` / `max_eur` | hinta-arvion vaihteluväli euroina, sis. ALV |
+| `price_estimate.basis` | mitä arvio kattaa, esim. `Roof inspection, 2–4 h` |
+
+Hinta on karkea arvio suomalaisesta hintatasosta, ei tarjous. Kenttä voi olla `null`, jos säännöllä
+ei ole pelikirjaa.
 
 ## Säännöt
 
@@ -336,7 +376,7 @@ Koko ketju palvelimilla:
 
 ```bash
 # käynnistä Logical Unit asetuksella ENABLE_ADMIN_ENDPOINTS=true
-curl localhost:8000/app/simulate/storm         # myrsky consolidatoriin
+curl localhost:8008/app/simulate/storm         # myrsky consolidatoriin
 # odota 3–4 min
 curl -X POST localhost:8001/admin/evaluate     # tuntisäännöt heti
 curl localhost:8001/alerts
@@ -348,7 +388,7 @@ Ympäristömuuttujat; Qwen-asetukset kannattaa laittaa tiedostoon `logical-unit/
 
 | Muuttuja | Oletus | Kuvaus |
 |---|---|---|
-| `CONSOLIDATOR_URL` | `http://localhost:8000` | Data Consolidatorin osoite |
+| `CONSOLIDATOR_URL` | `http://localhost:8008` | Data Consolidatorin osoite |
 | `POLL_SECONDS` | 60 | datan hakuväli |
 | `NOTIFY_ENABLED` | true | push-ilmoitukset consolidatorin `/app/notify`-rajapintaan |
 | `NOTIFY_EVENTS` | `created,escalated,resolved,analyzed` | tapahtumat, joista ilmoitetaan (pilkuilla eroteltu) |

@@ -94,7 +94,8 @@ CREATE INDEX IF NOT EXISTS idx_resolvers_category ON resolvers (category, active
 CREATE TABLE IF NOT EXISTS playbooks (
     rule_id   TEXT PRIMARY KEY,
     category  TEXT NOT NULL,
-    actions   TEXT NOT NULL                              -- JSON-lista merkkijonoja
+    actions   TEXT NOT NULL,                             -- JSON-lista merkkijonoja
+    expert    TEXT                                       -- JSON: esimerkkiasiantuntija ja hinta-arvio
 );
 
 -- Push-ilmoitusten lähettäjän kursori: viimeisin alert_events.id, joka on käsitelty.

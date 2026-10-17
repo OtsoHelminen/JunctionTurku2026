@@ -60,7 +60,7 @@ def load_settings() -> Settings:
         change_threshold_pct=float(os.getenv("CHANGE_THRESHOLD_PCT", "10")),
         max_future_skew_seconds=int(os.getenv("MAX_FUTURE_SKEW_SECONDS", "300")),
         consolidator_enabled=_env_bool("CONSOLIDATOR_ENABLED", True),
-        consolidator_url=os.getenv("CONSOLIDATOR_URL", "http://localhost:8000"),
+        consolidator_url=os.getenv("CONSOLIDATOR_URL", "http://localhost:8008"),
         consolidator_timeout_seconds=float(os.getenv("CONSOLIDATOR_TIMEOUT_SECONDS", "10")),
         poll_seconds=int(os.getenv("POLL_SECONDS", "60")),
         notify_enabled=_env_bool("NOTIFY_ENABLED", True),
