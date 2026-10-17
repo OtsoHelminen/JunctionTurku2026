@@ -89,7 +89,6 @@ network that allows connections to port 8008.
 {
   "title": "Data updated",
   "body": "New data is available.",
-  "sound": "default",
   "data": {
     "type": "weather_update"
   }

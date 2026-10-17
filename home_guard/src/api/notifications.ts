@@ -32,7 +32,6 @@ export async function registerForPush(): Promise<{ token: string | null; error?:
       importance: AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#2563eb',
-      sound: 'default',
       enableVibrate: true,
       showBadge: true,
       lockscreenVisibility: AndroidNotificationVisibility.PUBLIC,
@@ -89,7 +88,6 @@ export async function sendTestLocalNotification(): Promise<void> {
     content: {
       title: 'Toimenpidesuositus – Helsinki',
       body: 'Clean the gutters and downspouts before the rain\nSuggested expert: Roofer, approx. 150–400 €',
-      sound: true,
       priority: AndroidNotificationPriority.MAX,
       data: {
         kind: 'alert',
