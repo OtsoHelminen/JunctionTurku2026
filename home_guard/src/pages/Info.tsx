@@ -138,9 +138,9 @@ export default function Info() {
         </View>
 
         <Text style={styles.intro}>
-          The basics of your home are in order. By completing the safety
-          challenges below, you will level up your home’s security and
-          accumulate a valuable safety fund for unexpected situations.
+          The basics of your home are in order. By completing the safety challenges below, you will
+          level up your home’s security and accumulate a valuable safety fund for unexpected
+          situations.
         </Text>
       </View>
 
@@ -159,10 +159,7 @@ export default function Info() {
             <View style={styles.buttonRow}>
               <Pressable
                 onPress={() => completeTask(task)}
-                style={({ pressed }) => [
-                  styles.button,
-                  pressed && styles.buttonPressed,
-                ]}
+                style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
               >
                 <Text style={styles.buttonText}>Done</Text>
               </Pressable>
@@ -173,9 +170,7 @@ export default function Info() {
         {tasks.length === 0 && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>All challenges completed 🎉</Text>
-            <Text style={styles.cardText}>
-              Great work! Your home is as safe as it gets.
-            </Text>
+            <Text style={styles.cardText}>Great work! Your home is as safe as it gets.</Text>
           </View>
         )}
       </ScrollView>

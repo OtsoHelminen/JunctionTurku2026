@@ -32,9 +32,7 @@ async function readResponse<T>(response: Response): Promise<T> {
   const body = (await response.json()) as T | { detail?: string };
   if (!response.ok) {
     const detail =
-      typeof body === 'object' && body !== null && 'detail' in body
-        ? body.detail
-        : undefined;
+      typeof body === 'object' && body !== null && 'detail' in body ? body.detail : undefined;
     throw new Error(
       typeof detail === 'string' ? detail : `House request failed (${response.status}).`
     );

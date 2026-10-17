@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { createHouse, fetchHouses } from '../api/houses';
 import AddRealEstateModal from '../components/realEstate/AddRealEstateModal';
 import DeveloperTools from '../components/realEstate/DeveloperTools';
+import OrderHelpSection from '../components/realEstate/OrderHelpSection';
 import RealEstateSelector from '../components/realEstate/RealEstateSelector';
+import WarningsSection from '../components/realEstate/WarningsSection';
+import { getExpertSuggestions, sortAlerts } from '../components/realEstate/alert';
 import { createRandomCoordinates, mapHouseToEntry } from '../components/realEstate/location';
 import type { Coordinates, RealEstateEntry } from '../components/realEstate/types';
+import { useAlertNotifications } from '../components/realEstate/useAlertNotifications';
 import { REAL_ESTATE_ADDRESS_SAMPLES } from '../data/realEstateAddressSamples';
 
 export default function RealEstate() {
@@ -19,6 +23,23 @@ export default function RealEstate() {
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [addressError, setAddressError] = useState('');
   const [previewCoordinates, setPreviewCoordinates] = useState<Coordinates | null>(null);
+
+  const allAlerts = useAlertNotifications();
+
+  // Only the selected real estate's alerts, most urgent first
+  const alerts = useMemo(
+    () =>
+      sortAlerts(
+        allAlerts.filter(
+          (alert) =>
+            selectedRealEstateId === null ||
+            alert.houseId === null ||
+            alert.houseId === selectedRealEstateId
+        )
+      ),
+    [allAlerts, selectedRealEstateId]
+  );
+  const expertSuggestions = useMemo(() => getExpertSuggestions(alerts), [alerts]);
 
   const addressSuggestions =
     showAddressSuggestions && addressInput.trim().length >= 2
@@ -111,6 +132,9 @@ export default function RealEstate() {
           setIsAddressModalVisible(true);
         }}
       />
+
+      <WarningsSection alerts={alerts} />
+      <OrderHelpSection experts={expertSuggestions} />
 
       <AddRealEstateModal
         visible={isAddressModalVisible}

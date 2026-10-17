@@ -158,7 +158,6 @@ const FINNISH_CITY_ADDRESSES: FinnishCityAddress[] = [
 
 const SAMPLE_HOUSE_NUMBERS = [2, 5, 8, 11, 14, 17, 20, 23, 26, 29];
 
-export const REAL_ESTATE_ADDRESS_SAMPLES = FINNISH_CITY_ADDRESSES.flatMap(
-  ({ city, streets }) =>
-    streets.map((street, index) => `${street} ${SAMPLE_HOUSE_NUMBERS[index]}, ${city}`)
+export const REAL_ESTATE_ADDRESS_SAMPLES = FINNISH_CITY_ADDRESSES.flatMap(({ city, streets }) =>
+  streets.map((street, index) => `${street} ${SAMPLE_HOUSE_NUMBERS[index]}, ${city}`)
 );
