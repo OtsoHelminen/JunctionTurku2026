@@ -197,8 +197,8 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         if task.done() and not task.cancelled() and task.exception() is not None:
             raise HTTPException(
                 status_code=503, detail="Data generator failed")
-        app.state.generator.force_storm(30)
-        return {"status": "storm_simulation_started", "storm_events": 30}
+        app.state.generator.force_storm(60)
+        return {"status": "storm_simulation_started", "storm_events": 60}
 
     @app.get("/app/simulate/forest_fire")
     def simulate_forest_fire() -> dict[str, Any]:
@@ -206,8 +206,8 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         if task.done() and not task.cancelled() and task.exception() is not None:
             raise HTTPException(
                 status_code=503, detail="Data generator failed")
-        app.state.generator.force_forest_fire(30)
-        return {"status": "forest_fire_simulation_started", "fire_events": 30}
+        app.state.generator.force_forest_fire(60)
+        return {"status": "forest_fire_simulation_started", "fire_events": 60}
 
     @app.get("/app/simulate/frost")
     def simulate_frost() -> dict[str, Any]:
@@ -215,8 +215,8 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         if task.done() and not task.cancelled() and task.exception() is not None:
             raise HTTPException(
                 status_code=503, detail="Data generator failed")
-        app.state.generator.force_frost(30)
-        return {"status": "frost_simulation_started", "frost_events": 30}
+        app.state.generator.force_frost(60)
+        return {"status": "frost_simulation_started", "frost_events": 60}
 
     @app.get("/app/houses")
     def houses() -> dict[str, Any]:

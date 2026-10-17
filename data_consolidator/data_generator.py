@@ -154,7 +154,7 @@ class DataGenerator:
                 history.append(self._house_event(house, frame))
             self._house_history[house_id] = history
 
-    def force_storm(self, events: int = 30) -> None:
+    def force_storm(self, events: int = 60) -> None:
         """Start a storm over every zone in SOUTHERN_FINLAND_BOUNDS right now.
 
         Lasts this many simulation ticks, independent of house count. The first
@@ -170,7 +170,7 @@ class DataGenerator:
             if events:
                 self.generate_events()
 
-    def force_forest_fire(self, events: int = 30) -> None:
+    def force_forest_fire(self, events: int = 60) -> None:
         """Start a heat wave with drought over every zone right now.
 
         Lasts this many simulation ticks. Temperatures climb above the forest
@@ -185,7 +185,7 @@ class DataGenerator:
             if events:
                 self.generate_events()
 
-    def force_frost(self, events: int = 30) -> None:
+    def force_frost(self, events: int = 60) -> None:
         """Start a severe cold snap over every zone right now.
 
         Lasts this many simulation ticks. Temperatures plunge below -20 °C, so
