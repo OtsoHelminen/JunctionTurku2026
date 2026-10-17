@@ -20,25 +20,29 @@ def client(settings, monkeypatch):
 
 def house_events(house_id=1, address="Koivukuja 12, 00930 Helsinki, Finland", **day):
     event = json.loads(EXAMPLE.read_text())["data_events"][0]
+    del event["timestamp"]  # ilman aikaleimaa = vastaanottohetki
     event["weather"]["forecast"][0].update(day)
     return {"house": {"id": house_id, "address": address}, "data_events": [event]}
 
 
 def test_health(client):
     body = client.get("/health").json()
-    assert body["status"] == "ok" and body["rules"] == 9
+    assert body["status"] == "ok" and body["rules"] == 13
 
 
 def test_input_single_and_batch(client):
-    r = client.post("/input", json=json.loads(EXAMPLE.read_text()))
-    assert r.status_code == 202 and r.json()["accepted_readings"] == 7
+    r = client.post("/input", json=house_events())
+    assert r.status_code == 202 and r.json()["accepted_readings"] == 9
 
     batch = [house_events(1), {"house": {"id": 2, "address": "Testitie 1, 02100 Espoo, Finland"}, "data_events": []}]
     r = client.post("/input", json=batch)
-    assert r.json() == {"accepted_readings": 7, "houses_without_events": 1}
+    assert r.json() == {"accepted_readings": 9, "houses_without_events": 1}
 
 
 def test_input_validation(client):
+    future = house_events()
+    future["data_events"][0]["timestamp"] = "2099-01-01T00:00:00Z"
+    assert client.post("/input", json=future).json()["accepted_readings"] == 0
     assert client.post("/input", json={"data_events": []}).status_code == 422
     assert client.post("/input", json=house_events(rainfall_mm=-1)).status_code == 422
     assert client.post("/input", json=house_events(wind={"speed_m_s": "kova"})).status_code == 422

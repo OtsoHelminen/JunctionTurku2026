@@ -1,7 +1,7 @@
 # Hälytyssäännöt. Nämä päättävät, syntyykö hälytys. Kielimalli EI päätä sitä.
 #
 # Data tulee Data Consolidatorilta (app/consolidator.py). Jokaisesta kohteesta tallennetaan
-# minuutin välein lähialueen uusimman sääennusteen arvot:
+# minuutin välein lähialueen sääennusteen arvot:
 #   rain_today_mm            tämän päivän sademäärä
 #   wind_today_m_s           tämän päivän tuulen nopeus
 #   temp_min_today_c         tämän päivän alin lämpötila
@@ -9,6 +9,8 @@
 #   rain_forecast_total_mm   sademäärä yhteensä koko ennusteen ajalta (yleensä 3 vrk)
 #   wind_forecast_max_m_s    kovin tuuli koko ennusteen aikana
 #   temp_forecast_min_c      alin lämpötila koko ennusteen aikana
+#   flood_level              consolidatorin tulvavaroitus: 0 ei, 1 warning, 2 severe
+#   forest_fire_level        consolidatorin maastopalovaroitus: 0 ei, 1 warning, 2 severe
 #
 # Yhteiset kentät:
 #   id         yksilöllinen tunniste (pelikirjat viittaavat tähän)
@@ -16,7 +18,7 @@
 #   metric     mittarin nimi (yllä; ei missing_data-säännöissä)
 #   severity   info | low | medium | high | critical
 #   message    teksti; käytettävissä {source_id}, {value} ja säännön details-kentät
-#   category   ratkaisijakategoria (katto, kosteus, lvi, automaatio)
+#   category   ratkaisijakategoria (katto, kosteus, lvi, palo, automaatio)
 #   group      saman ryhmän säännöt = yksi hälytys, vakavin voittaa (-> eskalointi)
 #   immediate  true = arvioidaan joka minuutti, ei odoteta tasatuntia
 #   sources    valinnainen lista source_id:itä, joita sääntö koskee (oletus: kaikki)
@@ -138,6 +140,59 @@ rules:
     severity: high
     category: lvi
     message: "Kova pakkanen kohteessa {source_id} tänään: {value} °C, putkien jäätymisriski"
+
+  # --- Consolidatorin vyöhykevaroitukset (consolidator hoitaa hystereesin, joten last + heti)
+  - id: flood_warning
+    group: flood
+    type: threshold
+    metric: flood_level
+    op: ">="
+    value: 1
+    aggregate: last
+    window_minutes: 5
+    severity: high
+    immediate: true
+    category: kosteus
+    message: "Tulvavaroitus kohteen {source_id} alueella"
+
+  - id: flood_severe
+    group: flood
+    type: threshold
+    metric: flood_level
+    op: ">="
+    value: 2
+    aggregate: last
+    window_minutes: 5
+    severity: critical
+    immediate: true
+    category: kosteus
+    message: "Vakava tulvavaroitus kohteen {source_id} alueella"
+
+  - id: forest_fire_warning
+    group: forest_fire
+    type: threshold
+    metric: forest_fire_level
+    op: ">="
+    value: 1
+    aggregate: last
+    window_minutes: 5
+    severity: high
+    immediate: true
+    category: palo
+    message: "Maastopalovaroitus kohteen {source_id} alueella"
+
+  - id: forest_fire_severe
+    group: forest_fire
+    type: threshold
+    metric: forest_fire_level
+    op: ">="
+    value: 2
+    aggregate: last
+    window_minutes: 5
+    severity: critical
+    immediate: true
+    category: palo
+    message: "Vakava maastopalovaroitus kohteen {source_id} alueella"
 
   # --- Data lakannut tulemasta (Data Consolidator alhaalla tai ei tapahtumia lähialueelta)
   - id: no_data

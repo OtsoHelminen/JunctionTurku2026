@@ -9,31 +9,91 @@
     "house_type": "detached",
     "floor_area_m2": 142.5,
     "number_of_floors": 2,
-    "condition": "good"
+    "condition": "good",
+    "created_at": "2026-10-17 10:59:36"
   },
   "radius_km": 25.0,
   "data_events": [
     {
-      "location": {"latitude": 60.2731, "longitude": 24.8812},
+      "timestamp": "2026-10-17T10:59:36.844925Z",
+      "location": {
+        "latitude": 60.2731,
+        "longitude": 24.8812
+      },
+      "zone": {
+        "id": "3:66",
+        "crs": "EPSG:3067",
+        "size_km": 100
+      },
+      "storm": false,
       "weather": {
         "forecast": [
-          {"date": "2026-10-17", "temperature": {"min_c": 7.9, "max_c": 13.8}, "rainfall_mm": 12.4,
-           "wind": {"speed_m_s": 16.2, "direction": "SW"}, "conditions": "heavy rain"},
-          {"date": "2026-10-18", "temperature": {"min_c": 8.6, "max_c": 14.9}, "rainfall_mm": 6.1,
-           "wind": {"speed_m_s": 11.0, "direction": "W"}, "conditions": "rain showers"},
-          {"date": "2026-10-19", "temperature": {"min_c": -0.5, "max_c": 5.2}, "rainfall_mm": 0.0,
-           "wind": {"speed_m_s": 4.3, "direction": "NW"}, "conditions": "partly cloudy"}
+          {
+            "date": "2026-10-17",
+            "temperature": {
+              "min_c": 7.9,
+              "max_c": 13.8
+            },
+            "rainfall_mm": 12.4,
+            "wind": {
+              "speed_m_s": 16.2,
+              "direction": "SW"
+            },
+            "conditions": "heavy rain"
+          },
+          {
+            "date": "2026-10-18",
+            "temperature": {
+              "min_c": 8.6,
+              "max_c": 14.9
+            },
+            "rainfall_mm": 6.1,
+            "wind": {
+              "speed_m_s": 11.0,
+              "direction": "W"
+            },
+            "conditions": "rain showers"
+          },
+          {
+            "date": "2026-10-19",
+            "temperature": {
+              "min_c": -0.5,
+              "max_c": 5.2
+            },
+            "rainfall_mm": 0.0,
+            "wind": {
+              "speed_m_s": 4.3,
+              "direction": "NW"
+            },
+            "conditions": "partly cloudy"
+          }
         ]
       },
+      "extremes": [
+        {
+          "type": "flood",
+          "severity": "warning",
+          "zone_id": "3:66",
+          "started_at": "2026-10-17T10:41:36.844925Z",
+          "description": "Flood risk: 12.4 mm rain today, 18.5 mm over 3 days",
+          "metrics": {
+            "rainfall_today_mm": 12.4,
+            "rainfall_3day_mm": 18.5
+          }
+        }
+      ],
       "estate": {
+        "id": 1,
+        "user_id": "system",
+        "address": "Koivukuja 12, 00930 Helsinki, Finland",
+        "latitude": 60.2,
+        "longitude": 24.94,
         "construction_year": 1978,
-        "renovation_years": [1998, 2015],
         "house_type": "detached",
-        "shape": "rectangular",
         "floor_area_m2": 142.5,
         "number_of_floors": 2,
         "condition": "good",
-        "address": "Koivukuja 12, 00930 Helsinki, Finland"
+        "created_at": "2026-10-17 10:59:36"
       }
     }
   ]
