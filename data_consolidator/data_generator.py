@@ -34,6 +34,13 @@ ESTATE: dict[str, Any] = {
     "address": "Koivukuja 12, 00930 Helsinki, Finland",
 }
 
+# Events are scattered over a 50 km x 50 km area centered on Helsinki.
+AREA_CENTER_LAT = 60.20
+AREA_CENTER_LON = 24.94
+# 25 km in degrees: ~0.225 deg latitude, ~0.45 deg longitude at 60 deg N.
+AREA_HALF_LAT = 0.225
+AREA_HALF_LON = 0.45
+
 
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
@@ -61,6 +68,11 @@ class DataGenerator:
             for i in range(FORECAST_DAYS)
         ]
         self.history: deque[dict[str, Any]] = deque(maxlen=HISTORY_SIZE)
+        self._storm_remaining = 0
+
+    def force_storm(self, events: int = 30) -> None:
+        """Make the next `events` generated events stormy: heavy rain and wind."""
+        self._storm_remaining = max(0, events)
 
     @property
     def estate(self) -> dict[str, Any]:
@@ -68,7 +80,19 @@ class DataGenerator:
 
     def _step(self) -> None:
         r = self._rng
+        storm = self._storm_remaining > 0
+        if storm:
+            self._storm_remaining -= 1
         for d in self._days:
+            if storm:
+                d["rain"] = _clamp(
+                    d["rain"] + r.uniform(5.0, 15.0), *RAIN_BOUNDS)
+                d["wind"] = _clamp(
+                    d["wind"] + r.uniform(8.0, 20.0), *WIND_BOUNDS)
+                if r.random() < 0.3:
+                    d["min_c"] = _clamp(
+                        d["min_c"] - r.uniform(0.0, TEMP_STEP), *TEMP_BOUNDS)
+                continue
             d["min_c"] = _clamp(
                 d["min_c"] + r.uniform(-TEMP_STEP, TEMP_STEP), *TEMP_BOUNDS)
             d["spread"] = _clamp(
@@ -101,7 +125,18 @@ class DataGenerator:
                     "conditions": _conditions(rain, max_c),
                 }
             )
-        event = {"weather": {"forecast": forecast}, "estate": self.estate}
+        location = {
+            "latitude": round(
+                self._rng.uniform(AREA_CENTER_LAT - AREA_HALF_LAT,
+                                  AREA_CENTER_LAT + AREA_HALF_LAT), 4
+            ),
+            "longitude": round(
+                self._rng.uniform(AREA_CENTER_LON - AREA_HALF_LON,
+                                  AREA_CENTER_LON + AREA_HALF_LON), 4
+            ),
+        }
+        event = {"location": location, "weather": {
+            "forecast": forecast}, "estate": self.estate}
         self.history.append(event)
         return event
 
