@@ -8,12 +8,12 @@ import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { View } from 'react-native';
 
 function ThemedApp() {
-  const { isDark, isReady, colors } = useTheme();
+  const { isDark, colors } = useTheme();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      {isReady ? <Navigation /> : null}
+      <Navigation />
     </View>
   );
 }
