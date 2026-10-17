@@ -7,8 +7,7 @@ import {
 } from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-
-const API_URL = 'http://10.88.1.28:8008';
+import { API_URL } from './config';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
