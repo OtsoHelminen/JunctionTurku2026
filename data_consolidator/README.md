@@ -13,6 +13,18 @@ uv run uvicorn main:app --reload --port 8008   # interval defaults to 60 s
 
 **Base URL:** `http://localhost:8008`
 
+For the mobile app, start the API so other devices can connect:
+
+```bash
+uv run uvicorn main:app --host 0.0.0.0 --port 8008 --reload
+```
+
+The app uses the Expo development server's host address by default. If you are
+running a standalone build or the API is on another machine, set
+`expo.extra.apiUrl` in `home_guard/app.json` to the API's reachable base URL
+(for example, `http://192.168.1.20:8008`). The phone and computer must be on a
+network that allows connections to port 8008.
+
 | Method | Endpoint | Description | Required Payload / Parameters |
 | --- | --- | --- | --- |
 | GET | `/app/data_events` | Get the latest generated data events. | None |

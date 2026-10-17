@@ -5,8 +5,9 @@
   "private": true,
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "android:clean": "rm -rf android/app/.cxx && cd android && ./gradlew clean && cd .. && rm -rf android/app/build && rm -rf android/build",
+    "ios": "expo run:ios",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "prettier": "prettier --check .",
