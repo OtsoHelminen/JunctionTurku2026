@@ -156,6 +156,8 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         app.state.default_house_id = add_house(
             db, gen.estate, DEFAULT_HOUSE_LAT, DEFAULT_HOUSE_LON, user_id="system"
         )
+        for house in list_houses(db):
+            gen.register_house(house)
         task = asyncio.create_task(_generate_loop(gen, period))
 
         def _on_done(t: asyncio.Task) -> None:
@@ -198,18 +200,43 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         app.state.generator.force_storm(30)
         return {"status": "storm_simulation_started", "storm_events": 30}
 
+    @app.get("/app/simulate/forest_fire")
+    def simulate_forest_fire() -> dict[str, Any]:
+        task: asyncio.Task = app.state.task
+        if task.done() and not task.cancelled() and task.exception() is not None:
+            raise HTTPException(
+                status_code=503, detail="Data generator failed")
+        app.state.generator.force_forest_fire(30)
+        return {"status": "forest_fire_simulation_started", "fire_events": 30}
+
+    @app.get("/app/simulate/frost")
+    def simulate_frost() -> dict[str, Any]:
+        task: asyncio.Task = app.state.task
+        if task.done() and not task.cancelled() and task.exception() is not None:
+            raise HTTPException(
+                status_code=503, detail="Data generator failed")
+        app.state.generator.force_frost(30)
+        return {"status": "frost_simulation_started", "frost_events": 30}
+
     @app.get("/app/houses")
     def houses() -> dict[str, Any]:
         return {"houses": list_houses(app.state.db)}
 
     @app.post("/app/houses", status_code=201)
     def create_house(payload: HouseCreate) -> dict[str, Any]:
+        try:
+            app.state.generator.validate_house(
+                payload.latitude, payload.longitude)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         estate = payload.model_dump(
             exclude={"user_id", "latitude", "longitude"})
         house_id = add_house(
             app.state.db, estate, payload.latitude, payload.longitude, payload.user_id
         )
-        return {"house": get_house(app.state.db, house_id)}
+        house = get_house(app.state.db, house_id)
+        app.state.generator.register_house(house)
+        return {"house": house}
 
     @app.get("/app/data_events/{house_id}")
     def house_data_events(house_id: int) -> dict[str, Any]:
@@ -217,12 +244,7 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         house = get_house(app.state.db, house_id)
         if house is None:
             raise HTTPException(status_code=404, detail="House not found")
-        events = events_within_radius(
-            app.state.generator.latest(HISTORY_SIZE),
-            house["latitude"],
-            house["longitude"],
-            HOUSE_RADIUS_KM,
-        )
+        events = app.state.generator.latest_for_house(house_id, HISTORY_SIZE)
         return {"house": house, "radius_km": HOUSE_RADIUS_KM, "data_events": events}
 
     # --- Push notifications -------------------------------------------------
