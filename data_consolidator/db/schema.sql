@@ -19,3 +19,10 @@ CREATE TABLE IF NOT EXISTS houses (
 );
 
 CREATE INDEX IF NOT EXISTS idx_houses_user ON houses(user_id);
+
+CREATE TABLE IF NOT EXISTS devices (
+    token             TEXT    PRIMARY KEY,
+    platform          TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_devices ON devices(token);

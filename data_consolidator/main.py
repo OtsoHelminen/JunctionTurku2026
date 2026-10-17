@@ -19,13 +19,12 @@ from typing import Any, Literal
 from fastapi import FastAPI, HTTPException, Query, Response
 from pydantic import BaseModel, Field, field_validator
 
-from data_generator import HISTORY_SIZE, DataGenerator
+from data_generator import HISTORY_SIZE, HOUSE_RADIUS_KM, DataGenerator
 from db.database import (
     add_house,
     connect,
     delete_push_token,
     ensure_push_tokens_table,
-    events_within_radius,
     get_house,
     get_push_token,
     list_houses,
@@ -36,9 +35,6 @@ from db.database import (
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 EXPO_BATCH_SIZE = 100  # Expo accepts at most 100 messages per request
 EXPO_TOKEN_RE = re.compile(r"^Expo(nent)?PushToken\[[^\[\]]+\]$")
-
-# Radius around a house within which weather events are considered local.
-HOUSE_RADIUS_KM = 25.0
 
 # Coordinates of the generated estate (Koivukuja 12, 00930 Helsinki, Finland).
 DEFAULT_HOUSE_LAT = 60.20
@@ -147,7 +143,6 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
     async def lifespan(app: FastAPI):
         period = interval if interval is not None else get_interval()
         gen = DataGenerator(seed=seed)
-        gen.initialize_history(HISTORY_SIZE)
         app.state.generator = gen
         db = connect()
         ensure_push_tokens_table(db)
@@ -155,6 +150,9 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         app.state.default_house_id = add_house(
             db, gen.estate, DEFAULT_HOUSE_LAT, DEFAULT_HOUSE_LON, user_id="system"
         )
+        for house in list_houses(db):
+            gen.register_house(house)
+        gen.initialize_history(HISTORY_SIZE)
         task = asyncio.create_task(_generate_loop(gen, period))
 
         def _on_done(t: asyncio.Task) -> None:
@@ -167,12 +165,13 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         try:
             yield
         finally:
-            db.close()
             task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
                 pass
+            finally:
+                db.close()
 
     app = FastAPI(title="Data Consolidator", lifespan=lifespan)
 
@@ -202,13 +201,23 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         return {"houses": list_houses(app.state.db)}
 
     @app.post("/app/houses", status_code=201)
-    def create_house(payload: HouseCreate) -> dict[str, Any]:
+    async def create_house(payload: HouseCreate) -> dict[str, Any]:
+        try:
+            app.state.generator.validate_house(
+                payload.latitude, payload.longitude)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         estate = payload.model_dump(
             exclude={"user_id", "latitude", "longitude"})
         house_id = add_house(
             app.state.db, estate, payload.latitude, payload.longitude, payload.user_id
         )
-        return {"house": get_house(app.state.db, house_id)}
+        house = get_house(app.state.db, house_id)
+        if house is None:
+            raise HTTPException(
+                status_code=500, detail="Saved house could not be read")
+        app.state.generator.register_house(house)
+        return {"house": house}
 
     @app.get("/app/data_events/{house_id}")
     def house_data_events(house_id: int) -> dict[str, Any]:
@@ -216,12 +225,7 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         house = get_house(app.state.db, house_id)
         if house is None:
             raise HTTPException(status_code=404, detail="House not found")
-        events = events_within_radius(
-            app.state.generator.latest(HISTORY_SIZE),
-            house["latitude"],
-            house["longitude"],
-            HOUSE_RADIUS_KM,
-        )
+        events = app.state.generator.latest_for_house(house_id, HISTORY_SIZE)
         return {"house": house, "radius_km": HOUSE_RADIUS_KM, "data_events": events}
 
     # --- Push notifications -------------------------------------------------
