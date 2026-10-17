@@ -310,7 +310,12 @@ def get_playbook(conn: sqlite3.Connection, rule_id: str) -> dict[str, Any] | Non
     row = conn.execute("SELECT * FROM playbooks WHERE rule_id = ?", (rule_id,)).fetchone()
     if row is None:
         return None
-    return {"rule_id": row["rule_id"], "category": row["category"], "actions": json.loads(row["actions"])}
+    return {
+        "rule_id": row["rule_id"],
+        "category": row["category"],
+        "actions": json.loads(row["actions"]),
+        "expert": json.loads(row["expert"]) if row["expert"] else None,
+    }
 
 
 # ---------------------------------------------------------------- push-ilmoitukset

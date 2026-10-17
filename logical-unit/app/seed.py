@@ -43,10 +43,14 @@ def apply_seed(conn: sqlite3.Connection, data: dict[str, Any]) -> tuple[int, int
     for rule_id, pb in playbooks.items():
         conn.execute(
             """
-            INSERT INTO playbooks (rule_id, category, actions) VALUES (?, ?, ?)
-            ON CONFLICT (rule_id) DO UPDATE SET category = excluded.category, actions = excluded.actions
+            INSERT INTO playbooks (rule_id, category, actions, expert) VALUES (?, ?, ?, ?)
+            ON CONFLICT (rule_id) DO UPDATE SET
+                category = excluded.category, actions = excluded.actions, expert = excluded.expert
             """,
-            (rule_id, str(pb["category"]).lower(), json.dumps(pb.get("actions", []), ensure_ascii=False)),
+            (
+                rule_id, str(pb["category"]).lower(), json.dumps(pb.get("actions", []), ensure_ascii=False),
+                json.dumps(pb["expert"], ensure_ascii=False) if pb.get("expert") else None,
+            ),
         )
     return len(resolvers), len(playbooks)
 

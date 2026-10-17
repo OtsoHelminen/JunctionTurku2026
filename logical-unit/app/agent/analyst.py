@@ -6,6 +6,10 @@ Turvarajat:
 - Ratkaisijaehdotukset suodatetaan: kelpaavat vain ne, jotka find_resolvers oikeasti palautti.
 - Yhteystiedot haetaan kannasta, ei mallin tekstistä.
 - Jos malli ei ole käytössä tai epäonnistuu, käytetään pelikirjaan perustuvaa varasuositusta.
+
+Asiantuntijaehdotus (suggested_expert) on toistaiseksi mallin tai pelikirjan antama ESIMERKKI
+hinta-arvioineen, ei rekisteröity kumppani (registered = false). Myöhemmin tilalle tulee
+kumppanitietokannasta haettu yritys.
 """
 
 from __future__ import annotations
@@ -15,38 +19,45 @@ import re
 import sqlite3
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from .. import repository as repo
 from ..config import Settings
 from ..serializers import alert_to_dict, iso
 from .llm import ChatClient
 
-SYSTEM_PROMPT = """Olet kiinteistöjen sääriskien analyytikko.
-Sääntömoottori on jo todennut hälytyksen aiheelliseksi sääennusteen perusteella. Älä kyseenalaista sitä.
-Saat hälytyksen ja kohteen tiedot (rakennusvuosi, remontit, talotyyppi, kunto). Tehtäväsi:
-1. arvioi, mitä riskiä ennustettu sää aiheuttaa juuri tälle kohteelle (käytä työkaluja datan hakemiseen),
-2. kerro todennäköisin vahinkomekanismi (esim. katon vuoto, kellarin tulviminen, putkien jäätyminen),
-3. suosittele konkreettinen ennaltaehkäisevä toimenpide,
-4. ehdota ratkaisijaa VAIN find_resolvers-työkalun palauttamista (käytä niiden id-numeroita).
-Älä keksi ratkaisijoita, yhteystietoja tai mittausarvoja. Jos data ei riitä, sano se ja laske confidence-arvoa.
+SYSTEM_PROMPT = """You are a weather-risk analyst for residential properties.
+The rule engine has already determined from the weather forecast that the alert is justified. Do not question it.
+You receive the alert and the property details (construction year, renovations, house type, condition). Your task:
+1. assess what risk the forecast weather poses to this specific property (use the tools to fetch data),
+2. state the most likely damage mechanism (e.g. roof leak, basement flooding, frozen pipes),
+3. recommend one concrete preventive action,
+4. suggest a resolver ONLY from those returned by the find_resolvers tool (use their id numbers),
+5. suggest the type of expert who should do the work, with an illustrative example company and a price estimate.
+Do not invent resolver ids, contact details or measurements. If the data is insufficient, say so and lower the confidence.
 
-Kun olet valmis, vastaa PELKÄLLÄ JSON-objektilla ilman muuta tekstiä:
+The expert is an illustrative suggestion, not a real partner: example_name must be clearly fictional
+(e.g. "Example Roofing Ltd") and must not resemble a real company. Estimate the price for this job in euros,
+including VAT, at typical Finnish market rates, and say in price_basis what the estimate covers.
+
+When you are done, reply with ONLY a JSON object and no other text:
 {"assessment": "...", "likely_cause": "...", "recommendation": "...",
  "urgency": "immediate|today|this_week|monitor", "suggested_resolver_ids": [1],
- "confidence": "low|medium|high"}
-Kirjoita tekstikentät suomeksi, lyhyesti ja asiallisesti."""
+ "confidence": "low|medium|high",
+ "expert": {"profession": "...", "example_name": "...", "reason": "...",
+            "price_min_eur": 200, "price_max_eur": 600, "price_basis": "..."}}
+Write the text fields in English, briefly and factually."""
 
 TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
             "name": "get_recent_readings",
-            "description": "Hälytyksen kohteen minuuttilukemat yhdelle mittarille viimeisten minuuttien ajalta (enintään 60 min).",
+            "description": "Per-minute readings of one metric for the alert's property over the last minutes (at most 60 min).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "metric": {"type": "string", "description": "Mittarin nimi, esim. rain_today_mm, wind_today_m_s, temp_min_today_c"},
+                    "metric": {"type": "string", "description": "Metric name, e.g. rain_today_mm, wind_today_m_s, temp_min_today_c"},
                     "minutes": {"type": "integer", "minimum": 1, "maximum": 60},
                 },
                 "required": ["metric"],
@@ -57,7 +68,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_hourly_history",
-            "description": "Hälytyksen kohteen tuntikoosteet (min, max, keskiarvo) yhdelle mittarille, enintään 168 h taaksepäin.",
+            "description": "Hourly aggregates (min, max, avg) of one metric for the alert's property, up to 168 h back.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -72,7 +83,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "find_resolvers",
-            "description": "Hakee ratkaisijakumppanit kategorialla (esim. katto, kosteus, lvi, palo, automaatio) hälytyksen alueelta.",
+            "description": "Finds resolver partners by category (katto = roof, kosteus = moisture/flooding, lvi = plumbing/heating, palo = fire, automaatio = automation) in the alert's area.",
             "parameters": {
                 "type": "object",
                 "properties": {"category": {"type": "string"}},
@@ -84,7 +95,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_playbook",
-            "description": "Hakee hälytyssäännön vakiotoimenpiteet ja suositellun ratkaisijakategorian.",
+            "description": "Returns the standard actions for the alert rule, the recommended resolver category and a reference expert with a typical price range.",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -97,6 +108,21 @@ class AgentError(RuntimeError):
     pass
 
 
+class ExpertSuggestion(BaseModel):
+    profession: str = Field(min_length=1, max_length=200)
+    example_name: str = Field(min_length=1, max_length=200)
+    reason: str | None = Field(default=None, max_length=1000)
+    price_min_eur: int = Field(ge=0, le=1_000_000)
+    price_max_eur: int = Field(ge=0, le=1_000_000)
+    price_basis: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _price_range(self) -> "ExpertSuggestion":
+        if self.price_min_eur > self.price_max_eur:
+            raise ValueError("price_min_eur must not exceed price_max_eur")
+        return self
+
+
 class AgentOutput(BaseModel):
     assessment: str = Field(min_length=1, max_length=2000)
     likely_cause: str | None = Field(default=None, max_length=1000)
@@ -104,6 +130,7 @@ class AgentOutput(BaseModel):
     urgency: Literal["immediate", "today", "this_week", "monitor"]
     suggested_resolver_ids: list[int] = Field(default_factory=list, max_length=5)
     confidence: Literal["low", "medium", "high"]
+    expert: ExpertSuggestion | None = None
 
 
 def analyze_alert(
@@ -113,8 +140,8 @@ def analyze_alert(
     alert.pop("analysis", None)
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": "Hälytys:\n" + json.dumps(alert, ensure_ascii=False, indent=2)
-            + "\n\nKohde:\n" + json.dumps(repo.get_estate(conn, alert_row["source_id"]) or {}, ensure_ascii=False, indent=2)},
+        {"role": "user", "content": "Alert:\n" + json.dumps(alert, ensure_ascii=False, indent=2)
+            + "\n\nProperty:\n" + json.dumps(repo.get_estate(conn, alert_row["source_id"]) or {}, ensure_ascii=False, indent=2)},
     ]
     offered_ids: set[int] = set()
 
@@ -144,7 +171,7 @@ def analyze_alert(
             messages.append({"role": "assistant", "content": content})
             messages.append({
                 "role": "user",
-                "content": f"Vastaus ei ollut kelvollinen ({str(exc)[:300]}). Palauta pelkkä JSON-objekti pyydetyssä muodossa.",
+                "content": f"The reply was not valid ({str(exc)[:300]}). Return only the JSON object in the requested format.",
             })
             continue
         return _build_analysis(conn, alert_row, output, offered_ids, client.model, now)
@@ -168,8 +195,36 @@ def fallback_analysis(conn: sqlite3.Connection, alert_row: sqlite3.Row, now: int
         "confidence": None,
         "playbook_actions": actions,
         "suggested_resolvers": resolvers,
+        "suggested_expert": _playbook_expert(playbook),
         "generated_at": iso(now),
     }
+
+
+def _expert_dict(expert: ExpertSuggestion, source: str) -> dict[str, Any]:
+    """Appille menevä muoto. registered=false: esimerkki, ei kumppanitietokannan yritys."""
+    return {
+        "registered": False,
+        "source": source,
+        "profession": expert.profession,
+        "example_name": expert.example_name,
+        "reason": expert.reason,
+        "price_estimate": {
+            "min_eur": expert.price_min_eur,
+            "max_eur": expert.price_max_eur,
+            "currency": "EUR",
+            "includes_vat": True,
+            "basis": expert.price_basis,
+        },
+    }
+
+
+def _playbook_expert(playbook: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not playbook or not playbook.get("expert"):
+        return None
+    try:
+        return _expert_dict(ExpertSuggestion.model_validate(playbook["expert"]), "playbook")
+    except ValidationError:
+        return None
 
 
 # ---------------------------------------------------------------- sisäiset
@@ -189,10 +244,10 @@ def _run_tool(
             # Mallille ei anneta yhteystietoja; ne liitetään vastaukseen kannasta.
             return repo.find_resolvers(conn, str(args["category"]), alert_row["area"], with_contact=False)
         if name == "get_playbook":
-            return repo.get_playbook(conn, alert_row["rule_id"]) or {"info": "tälle säännölle ei ole pelikirjaa"}
-        return {"error": f"tuntematon työkalu {name!r}"}
+            return repo.get_playbook(conn, alert_row["rule_id"]) or {"info": "no playbook for this rule"}
+        return {"error": f"unknown tool {name!r}"}
     except KeyError as exc:
-        return {"error": f"puuttuva parametri {exc}"}
+        return {"error": f"missing parameter {exc}"}
 
 
 def _build_analysis(
@@ -218,6 +273,8 @@ def _build_analysis(
         "confidence": output.confidence,
         "playbook_actions": playbook["actions"] if playbook else [],
         "suggested_resolvers": kept,
+        # Mallin oma ehdotus; jos se puuttuu, pelikirjan esimerkki.
+        "suggested_expert": _expert_dict(output.expert, "llm") if output.expert else _playbook_expert(playbook),
         "generated_at": iso(now),
     }
     if dropped:
