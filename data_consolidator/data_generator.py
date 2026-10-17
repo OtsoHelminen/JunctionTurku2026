@@ -43,6 +43,13 @@ FIRE_MAX_RAIN_MM = 0.5       # "dry" day
 FIRE_DRY_TICKS = 30
 FIRE_SEVERE_TEMP_C = 27.0
 FIRE_CLEAR_TEMP_C = 19.0
+FROSTBITE_MIN_C = -20.0      # today's min temperature for frostbite risk
+FROSTBITE_TICKS = 5          # consecutive severe-cold ticks before the alert
+FROSTBITE_SEVERE_C = -25.0
+FROSTBITE_CLEAR_C = -15.0    # hysteresis: alert stays until warmer than this
+FREEZE_MAX_C = 0.0           # a sub-zero day
+FREEZE_TICKS = 15            # consecutive sub-zero ticks before pipes at risk
+FREEZE_SEVERE_C = -15.0
 # very heavy rain: severe flood level from the first storm tick
 STORM_RAIN_MM = 35.0
 STORM_WIND_M_S = 21.0        # storm-force wind (FMI 'myrsky' starts at 21 m/s)
@@ -89,6 +96,8 @@ class DataGenerator:
             raise ValueError('Invalid simulation bounds')
         self._lock = threading.RLock()
         self._storm_remaining = 0
+        self._fire_remaining = 0
+        self._frost_remaining = 0
         self._timestamp: datetime | None = None
         self.history: deque[dict[str, Any]] = deque(maxlen=HISTORY_SIZE)
         self._frames: deque[dict[str, Any]] = deque(maxlen=HISTORY_SIZE)
@@ -113,7 +122,8 @@ class DataGenerator:
                                  'max_x': (col+1) * ZONE_SIZE_M, 'max_y': (row+1) * ZONE_SIZE_M},
                     'days': [{'min_c': 8.0+i+self._rng.uniform(-2, 2), 'spread': 6.0,
                               'rain': 0.0, 'wind': 4.0, 'dir': 4} for i in range(FORECAST_DAYS)],
-                    'dry_ticks': 0, 'alerts': {}, 'front': 0, 'dry_spell': 0,
+                    'dry_ticks': 0, 'cold_ticks': 0, 'frost_ticks': 0,
+                    'alerts': {}, 'front': 0, 'dry_spell': 0,
                 }
 
     @property
@@ -154,11 +164,44 @@ class DataGenerator:
         if isinstance(events, bool) or not isinstance(events, int) or events < 0:
             raise ValueError('events must be a non-negative integer')
         with self._lock:
-            self._storm_remaining = events
+            # +1 because the immediate first tick also consumes the counter,
+            # so exactly `events` storm ticks follow after this call.
+            self._storm_remaining = events + 1 if events else 0
             if events:
                 self.generate_events()
 
-    def _step(self, zone: dict[str, Any], storm: bool) -> None:
+    def force_forest_fire(self, events: int = 30) -> None:
+        """Start a heat wave with drought over every zone right now.
+
+        Lasts this many simulation ticks. Temperatures climb above the forest
+        fire threshold and rain stops, so after the drying period every zone
+        raises a forest fire alert. The first tick is generated immediately.
+        """
+        if isinstance(events, bool) or not isinstance(events, int) or events < 0:
+            raise ValueError('events must be a non-negative integer')
+        with self._lock:
+            self._fire_remaining = events + 1 if events else 0
+            self._frost_remaining = 0  # heat wave and cold snap exclude each other
+            if events:
+                self.generate_events()
+
+    def force_frost(self, events: int = 30) -> None:
+        """Start a severe cold snap over every zone right now.
+
+        Lasts this many simulation ticks. Temperatures plunge below -20 °C, so
+        frostbite alerts appear within a few ticks and freezing-pipes alerts
+        once the cold has persisted. The first tick is generated immediately.
+        """
+        if isinstance(events, bool) or not isinstance(events, int) or events < 0:
+            raise ValueError('events must be a non-negative integer')
+        with self._lock:
+            self._frost_remaining = events + 1 if events else 0
+            self._fire_remaining = 0  # cold snap and heat wave exclude each other
+            if events:
+                self.generate_events()
+
+    def _step(self, zone: dict[str, Any], storm: bool, fire: bool = False,
+              frost: bool = False) -> None:
         r = self._rng
         days = zone['days']
         if zone['front'] > 0:
@@ -169,13 +212,16 @@ class DataGenerator:
             zone['dry_spell'] -= 1
         elif not storm and not zone['front'] and r.random() < DRY_SPELL_CHANCE:
             zone['dry_spell'] = r.randint(60, 120)
-        if storm:
+        if storm or fire or frost:
             zone['front'] = zone['dry_spell'] = 0
         rain_target = (RAIN_FRONT_TARGET_MM if zone['front']
                        else DRY_SPELL_TARGET_MM if zone['dry_spell'] else 2.0)
         for d in days:
+            # Mean-reverting walk toward a mild baseline so forced cold snaps
+            # and heat waves decay back to normal weather afterwards.
             d['min_c'] = _clamp(
-                d['min_c'] + r.uniform(-TEMP_STEP, TEMP_STEP), *TEMP_BOUNDS)
+                d['min_c'] + _clamp((8.0-d['min_c'])*0.05 + r.uniform(-TEMP_STEP, TEMP_STEP),
+                                    -TEMP_STEP, TEMP_STEP), *TEMP_BOUNDS)
             d['spread'] = _clamp(
                 d['spread'] + r.uniform(-SPREAD_STEP, SPREAD_STEP), *SPREAD_BOUNDS)
             if storm:
@@ -183,6 +229,20 @@ class DataGenerator:
                     max(STORM_RAIN_MM, d['rain'] + r.uniform(3, 8)), *RAIN_BOUNDS)
                 d['wind'] = _clamp(
                     max(STORM_WIND_M_S, d['wind'] + r.uniform(1, 3)), *WIND_BOUNDS)
+            elif fire:
+                # Heat wave: hot, bone-dry, breezy — forest fire conditions.
+                d['min_c'] = _clamp(
+                    max(22.0, d['min_c'] + r.uniform(0.5, 2.0)), *TEMP_BOUNDS)
+                d['spread'] = _clamp(
+                    max(8.0, d['spread'] + r.uniform(0, 1)), *SPREAD_BOUNDS)
+                d['rain'] = 0.0
+                d['wind'] = _clamp(
+                    max(8.0, d['wind'] + r.uniform(0, 1)), *WIND_BOUNDS)
+            elif frost:
+                # Cold snap: severe frost, no precipitation.
+                d['min_c'] = _clamp(
+                    min(-24.0, d['min_c'] - r.uniform(1, 3)), *TEMP_BOUNDS)
+                d['rain'] = 0.0
             else:
                 # Bounded, mean-reverting walks avoid remaining at storm maxima.
                 # Dry spells (high pressure) keep only light, mostly-drying noise.
@@ -217,8 +277,13 @@ class DataGenerator:
         total = round(sum(d['rainfall_mm'] for d in forecast), 1)
         high = today['temperature']['max_c']
         wind = today['wind']['speed_m_s']
+        low = today['temperature']['min_c']
         zone['dry_ticks'] = zone['dry_ticks'] + \
             1 if rain <= FIRE_MAX_RAIN_MM else 0
+        zone['frost_ticks'] = zone['frost_ticks'] + \
+            1 if low <= FROSTBITE_MIN_C else 0
+        zone['cold_ticks'] = zone['cold_ticks'] + \
+            1 if low <= FREEZE_MAX_C else 0
         alerts = zone['alerts']
         zid = zone['id']
 
@@ -249,6 +314,34 @@ class DataGenerator:
                             'wind_speed_m_s': wind, 'rainfall_today_mm': rain}}
         else:
             alerts.pop('forest_fire', None)
+
+        freezing = low <= FROSTBITE_MIN_C and zone['frost_ticks'] >= FROSTBITE_TICKS
+        if 'frostbite' in alerts and not freezing:
+            freezing = low <= FROSTBITE_CLEAR_C
+        if freezing:
+            severity = 'severe' if low <= FROSTBITE_SEVERE_C else 'warning'
+            alerts['frostbite'] = {
+                'type': 'frostbite', 'severity': severity, 'zone_id': zid,
+                'started_at': alerts.get('frostbite', {}).get('started_at', timestamp),
+                'description': f'Frostbite risk: {low} °C, severe cold for {zone["frost_ticks"]} updates',
+                'metrics': {'min_temperature_c': low,
+                            'severe_cold_ticks': zone['frost_ticks']}}
+        else:
+            alerts.pop('frostbite', None)
+
+        pipes = low <= FREEZE_MAX_C and zone['cold_ticks'] >= FREEZE_TICKS
+        if 'freezing_pipes' in alerts and not pipes:
+            pipes = low <= FREEZE_MAX_C
+        if pipes:
+            severity = 'severe' if low <= FREEZE_SEVERE_C else 'warning'
+            alerts['freezing_pipes'] = {
+                'type': 'freezing_pipes', 'severity': severity, 'zone_id': zid,
+                'started_at': alerts.get('freezing_pipes', {}).get('started_at', timestamp),
+                'description': f'Freezing pipes risk: {low} °C, sub-zero for {zone["cold_ticks"]} updates',
+                'metrics': {'min_temperature_c': low,
+                            'sub_zero_ticks': zone['cold_ticks']}}
+        else:
+            alerts.pop('freezing_pipes', None)
         return [copy.deepcopy(a) for a in alerts.values()]
 
     def _zone_id(self, location: dict[str, float]) -> str:
@@ -286,13 +379,19 @@ class DataGenerator:
                 timedelta(minutes=1) if self._timestamp else datetime.now(
                     timezone.utc)
             storm = self._storm_remaining > 0
+            fire = self._fire_remaining > 0
+            frost = self._frost_remaining > 0
             if storm:
                 self._storm_remaining -= 1
+            if fire:
+                self._fire_remaining -= 1
+            if frost:
+                self._frost_remaining -= 1
             weather = {}
             extremes = {}
             events = []
             for zone_id, zone in self._zones.items():
-                self._step(zone, storm)
+                self._step(zone, storm, fire, frost)
                 weather[zone_id] = self._weather(zone['days'], self._timestamp)
                 extremes[zone_id] = self._update_extremes(
                     zone, weather[zone_id]['forecast'], self._timestamp)
