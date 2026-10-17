@@ -32,6 +32,10 @@ class Settings:
     consolidator_url: str
     consolidator_timeout_seconds: float
     poll_seconds: int                # datan hakuväli
+    notify_enabled: bool             # push-ilmoitukset Appiin consolidatorin kautta
+    notify_events: frozenset[str]    # tapahtumat, joista ilmoitetaan
+    notify_seconds: int              # ilmoitusjonon tarkistusväli
+    notify_max_attempts: int
     scheduler_enabled: bool
     admin_endpoints: bool
     agent_enabled: bool
@@ -59,6 +63,12 @@ def load_settings() -> Settings:
         consolidator_url=os.getenv("CONSOLIDATOR_URL", "http://localhost:8000"),
         consolidator_timeout_seconds=float(os.getenv("CONSOLIDATOR_TIMEOUT_SECONDS", "10")),
         poll_seconds=int(os.getenv("POLL_SECONDS", "60")),
+        notify_enabled=_env_bool("NOTIFY_ENABLED", True),
+        notify_events=frozenset(
+            e.strip() for e in os.getenv("NOTIFY_EVENTS", "created,escalated,resolved,analyzed").split(",") if e.strip()
+        ),
+        notify_seconds=int(os.getenv("NOTIFY_SECONDS", "5")),
+        notify_max_attempts=int(os.getenv("NOTIFY_MAX_ATTEMPTS", "5")),
         scheduler_enabled=_env_bool("SCHEDULER_ENABLED", True),
         admin_endpoints=_env_bool("ENABLE_ADMIN_ENDPOINTS", False),
         agent_enabled=_env_bool("AGENT_ENABLED", False),

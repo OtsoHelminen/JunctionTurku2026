@@ -1,4 +1,4 @@
-"""Sovelluksen käynnistys: tietokanta, säännöt, ajastin ja agentti.
+"""Sovelluksen käynnistys: tietokanta, säännöt, ajastin, datan haku, agentti ja push-ilmoitukset.
 
 Aja YHDELLÄ prosessilla (uvicorn ilman --workers > 1), muuten ajastin käynnistyy moneen kertaan.
 """
@@ -12,13 +12,15 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from . import repository as repo
 from .agent.llm import OpenAICompatibleClient
 from .agent.worker import run_agent_worker
 from .api import router
 from .config import load_settings
 from .consolidator import run_poller
-from .db import init_db
+from .db import init_db, session
 from .jobs import run_scheduler
+from .notifier import run_notifier
 from .rules import load_rules, validate_against_retention
 from .seed import seed_if_empty
 
@@ -37,6 +39,8 @@ def create_app() -> FastAPI:
         rules = load_rules(settings.rules_path)
         validate_against_retention(rules, settings.retention_minutes)
         seed_if_empty(settings)
+        with session(settings.db_path) as conn:
+            repo.init_notifier_cursor(conn)
 
         client = (
             OpenAICompatibleClient(
@@ -55,6 +59,8 @@ def create_app() -> FastAPI:
             tasks.append(asyncio.create_task(run_agent_worker(settings, client, stop), name="agent-worker"))
             if settings.consolidator_enabled:
                 tasks.append(asyncio.create_task(run_poller(settings, stop), name="consolidator-poller"))
+            if settings.notify_enabled:
+                tasks.append(asyncio.create_task(run_notifier(settings, stop), name="notifier"))
         log.info(
             "Logical Unit käynnissä: %d sääntöä, kanta %s, data %s, agentti %s",
             len(rules), settings.db_path,

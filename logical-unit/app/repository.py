@@ -311,3 +311,26 @@ def get_playbook(conn: sqlite3.Connection, rule_id: str) -> dict[str, Any] | Non
     if row is None:
         return None
     return {"rule_id": row["rule_id"], "category": row["category"], "actions": json.loads(row["actions"])}
+
+
+# ---------------------------------------------------------------- push-ilmoitukset
+
+def init_notifier_cursor(conn: sqlite3.Connection) -> None:
+    """Ensimmäisellä kerralla kursori viimeisimpään tapahtumaan: vanhaa historiaa ei lähetetä."""
+    conn.execute(
+        "INSERT OR IGNORE INTO notifier_state (id, last_event_id) "
+        "SELECT 1, COALESCE(MAX(id), 0) FROM alert_events"
+    )
+
+
+def notifier_cursor(conn: sqlite3.Connection) -> int:
+    row = conn.execute("SELECT last_event_id FROM notifier_state WHERE id = 1").fetchone()
+    return row["last_event_id"] if row else 0
+
+
+def set_notifier_cursor(conn: sqlite3.Connection, event_id: int) -> None:
+    conn.execute(
+        "INSERT INTO notifier_state (id, last_event_id) VALUES (1, ?) "
+        "ON CONFLICT (id) DO UPDATE SET last_event_id = excluded.last_event_id",
+        (event_id,),
+    )
