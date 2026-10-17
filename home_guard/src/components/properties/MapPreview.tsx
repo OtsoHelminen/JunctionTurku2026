@@ -9,7 +9,7 @@ const MAP_TILE_SIZE = 160;
 const MAP_TILE_COUNT = 3;
 const MAP_HEIGHT = 200;
 const MAP_TILE_HEADERS = {
-  'User-Agent': 'HomeGuard/1.0 (real estate map preview)',
+  'User-Agent': 'HomeGuard/1.0 (property map preview)',
 };
 
 function getTilePosition(latitude: number, longitude: number) {
