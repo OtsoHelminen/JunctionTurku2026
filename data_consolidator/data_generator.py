@@ -7,6 +7,7 @@ import random
 from collections import deque
 from datetime import date, timedelta
 from typing import Any
+from datetime import datetime
 
 HISTORY_SIZE = 60
 FORECAST_DAYS = 3
@@ -125,6 +126,11 @@ class DataGenerator:
                     "conditions": _conditions(rain, max_c),
                 }
             )
+        timestamp = (
+            self.history[-1]["timestamp"] + timedelta(minutes=1)
+            if self.history
+            else datetime.now()
+        )
         location = {
             "latitude": round(
                 self._rng.uniform(AREA_CENTER_LAT - AREA_HALF_LAT,
@@ -135,8 +141,8 @@ class DataGenerator:
                                   AREA_CENTER_LON + AREA_HALF_LON), 4
             ),
         }
-        event = {"location": location, "weather": {
-            "forecast": forecast}, "estate": self.estate}
+        event = {"timestamp": timestamp, "location": location,
+                 "weather": {"forecast": forecast}, "estate": self.estate}
         self.history.append(event)
         return event
 
