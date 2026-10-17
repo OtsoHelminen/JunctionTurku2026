@@ -48,5 +48,8 @@ def init_db(db_path: str) -> None:
     conn = connect(db_path)
     try:
         conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(sources)")}
+        if "estate" not in columns:  # vanha kanta ennen Data Consolidator -integraatiota
+            conn.execute("ALTER TABLE sources ADD COLUMN estate TEXT")
     finally:
         conn.close()

@@ -16,6 +16,7 @@ from .agent.llm import OpenAICompatibleClient
 from .agent.worker import run_agent_worker
 from .api import router
 from .config import load_settings
+from .consolidator import run_poller
 from .db import init_db
 from .jobs import run_scheduler
 from .rules import load_rules, validate_against_retention
@@ -52,9 +53,13 @@ def create_app() -> FastAPI:
         if settings.scheduler_enabled:
             tasks.append(asyncio.create_task(run_scheduler(settings, rules, stop), name="scheduler"))
             tasks.append(asyncio.create_task(run_agent_worker(settings, client, stop), name="agent-worker"))
+            if settings.consolidator_enabled:
+                tasks.append(asyncio.create_task(run_poller(settings, stop), name="consolidator-poller"))
         log.info(
-            "Logical Unit käynnissä: %d sääntöä, kanta %s, agentti %s",
-            len(rules), settings.db_path, settings.llm_model if client else "pois päältä",
+            "Logical Unit käynnissä: %d sääntöä, kanta %s, data %s, agentti %s",
+            len(rules), settings.db_path,
+            settings.consolidator_url if settings.consolidator_enabled else "vain POST /input",
+            settings.llm_model if client else "pois päältä",
         )
         try:
             yield

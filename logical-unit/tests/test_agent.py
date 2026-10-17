@@ -5,7 +5,7 @@ from app.agent.worker import process_pending
 from app.db import connect, session
 from app.jobs import evaluate_all
 from conftest import T0
-from test_lifecycle import feed, low_pressure
+from test_lifecycle import feed, rainy
 
 
 class ScriptedClient:
@@ -32,14 +32,14 @@ def tool_call(name, args, call_id="c1"):
 
 def final(**kw):
     body = {"assessment": "Paine on laskenut tasaisesti.", "likely_cause": "Vuoto",
-            "recommendation": "Tilaa putkiasentaja.", "urgency": "today",
+            "recommendation": "Puhdista rännit.", "urgency": "today",
             "suggested_resolver_ids": [], "confidence": "medium"}
     body.update(kw)
     return {"content": "<think>pohdintaa</think>\n```json\n" + json.dumps(body) + "\n```"}
 
 
 def make_alert(settings, rules):
-    feed(settings, 0, 61, low_pressure)
+    feed(settings, 0, 61, rainy)
     evaluate_all(settings, rules, T0 + 60 * 60, full=True)
 
 
@@ -51,29 +51,30 @@ def first_active(settings):
 def test_agent_uses_tools_and_drops_hallucinated_resolvers(settings, rules):
     make_alert(settings, rules)
     conn = connect(settings.db_path)
-    putki_ids = [r["id"] for r in repo.find_resolvers(conn, "putki", "Helsinki")]
+    katto_ids = [r["id"] for r in repo.find_resolvers(conn, "katto", "Helsinki")]
     conn.close()
     client = ScriptedClient([
-        tool_call("get_recent_readings", {"metric": "water_pressure_bar", "minutes": 30}),
-        tool_call("find_resolvers", {"category": "putki"}),
-        final(suggested_resolver_ids=[putki_ids[0], 999]),
+        tool_call("get_recent_readings", {"metric": "rain_today_mm", "minutes": 30}),
+        tool_call("find_resolvers", {"category": "katto"}),
+        final(suggested_resolver_ids=[katto_ids[0], 999]),
     ])
     process_pending(settings, client, now=T0 + 61 * 60, limit=1)
 
-    analysis = first_active(settings)["pressure_low"]["analysis"]
+    analysis = first_active(settings)["heavy_rain"]["analysis"]
     assert analysis["status"] == "done" and analysis["source"] == "llm"
-    assert [r["id"] for r in analysis["suggested_resolvers"]] == [putki_ids[0]]
+    assert [r["id"] for r in analysis["suggested_resolvers"]] == [katto_ids[0]]
     assert analysis["suggested_resolvers"][0]["phone"]  # yhteystieto tulee kannasta
     assert analysis["dropped_resolver_ids"] == [999]
     tool_msgs = [m for m in client.calls[-1] if m["role"] == "tool"]
     assert "phone" not in tool_msgs[1]["content"]  # mallille ei annettu yhteystietoja
+    assert "Kohde:" in client.calls[0][1]["content"]  # kohteen tiedot mukana
 
 
 def test_agent_retries_on_invalid_json(settings, rules):
     make_alert(settings, rules)
     client = ScriptedClient([{"content": "En osaa sanoa."}, final()])
     process_pending(settings, client, now=T0 + 61 * 60, limit=1)
-    assert first_active(settings)["pressure_low"]["analysis"]["status"] == "done"
+    assert first_active(settings)["heavy_rain"]["analysis"]["status"] == "done"
 
 
 def test_agent_failure_falls_back_to_playbook(settings, rules):
@@ -83,7 +84,7 @@ def test_agent_failure_falls_back_to_playbook(settings, rules):
     now = T0 + 61 * 60
     for attempt in range(3):
         process_pending(s, client, now=now + attempt * 600, limit=1)
-    analysis = first_active(s)["pressure_low"]["analysis"]
+    analysis = first_active(s)["heavy_rain"]["analysis"]
     assert analysis["status"] == "failed" and analysis["source"] == "playbook"
     assert analysis["playbook_actions"] and analysis["suggested_resolvers"]
 
@@ -91,6 +92,6 @@ def test_agent_failure_falls_back_to_playbook(settings, rules):
 def test_disabled_agent_uses_playbook(settings, rules):
     make_alert(settings, rules)
     process_pending(settings, None, now=T0 + 61 * 60, limit=10)
-    analysis = first_active(settings)["pressure_low"]["analysis"]
+    analysis = first_active(settings)["heavy_rain"]["analysis"]
     assert analysis["status"] == "skipped" and analysis["reason"] == "agent_disabled"
-    assert analysis["suggested_resolvers"][0]["name"] == "Esimerkki Putkihuolto Oy"
+    assert analysis["suggested_resolvers"][0]["name"] == "Esimerkki Kattohuolto Oy"

@@ -22,11 +22,12 @@ from ..config import Settings
 from ..serializers import alert_to_dict, iso
 from .llm import ChatClient
 
-SYSTEM_PROMPT = """Olet kiinteistöjen valvontajärjestelmän analyytikko.
-Sääntömoottori on jo todennut hälytyksen aiheelliseksi. Älä kyseenalaista sitä. Tehtäväsi:
-1. arvioi tilanne mittausdatan perusteella (käytä työkaluja datan hakemiseen),
-2. kerro todennäköisin syy,
-3. suosittele konkreettinen toimenpide,
+SYSTEM_PROMPT = """Olet kiinteistöjen sääriskien analyytikko.
+Sääntömoottori on jo todennut hälytyksen aiheelliseksi sääennusteen perusteella. Älä kyseenalaista sitä.
+Saat hälytyksen ja kohteen tiedot (rakennusvuosi, remontit, talotyyppi, kunto). Tehtäväsi:
+1. arvioi, mitä riskiä ennustettu sää aiheuttaa juuri tälle kohteelle (käytä työkaluja datan hakemiseen),
+2. kerro todennäköisin vahinkomekanismi (esim. katon vuoto, kellarin tulviminen, putkien jäätyminen),
+3. suosittele konkreettinen ennaltaehkäisevä toimenpide,
 4. ehdota ratkaisijaa VAIN find_resolvers-työkalun palauttamista (käytä niiden id-numeroita).
 Älä keksi ratkaisijoita, yhteystietoja tai mittausarvoja. Jos data ei riitä, sano se ja laske confidence-arvoa.
 
@@ -45,7 +46,7 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "metric": {"type": "string", "description": "Mittarin nimi, esim. water_pressure_bar"},
+                    "metric": {"type": "string", "description": "Mittarin nimi, esim. rain_today_mm, wind_today_m_s, temp_min_today_c"},
                     "minutes": {"type": "integer", "minimum": 1, "maximum": 60},
                 },
                 "required": ["metric"],
@@ -71,7 +72,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "find_resolvers",
-            "description": "Hakee ratkaisijakumppanit kategorialla (esim. putki, lvi, kosteus, automaatio) hälytyksen alueelta.",
+            "description": "Hakee ratkaisijakumppanit kategorialla (esim. katto, kosteus, lvi, automaatio) hälytyksen alueelta.",
             "parameters": {
                 "type": "object",
                 "properties": {"category": {"type": "string"}},
@@ -112,7 +113,8 @@ def analyze_alert(
     alert.pop("analysis", None)
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": "Hälytys:\n" + json.dumps(alert, ensure_ascii=False, indent=2)},
+        {"role": "user", "content": "Hälytys:\n" + json.dumps(alert, ensure_ascii=False, indent=2)
+            + "\n\nKohde:\n" + json.dumps(repo.get_estate(conn, alert_row["source_id"]) or {}, ensure_ascii=False, indent=2)},
     ]
     offered_ids: set[int] = set()
 

@@ -1,48 +1,89 @@
-"""Data Consolidatorilta tulevan JSONin malli. Muokkaa tätä, kun sovitte lopullisen muodon."""
+"""Data Consolidatorin JSONin malli (ks. data_consolidator/data_template).
+
+Logical Unit hakee kohteen datan osoitteesta GET /app/data_events/{house_id}. Sama vastaus
+kelpaa sellaisenaan myös POST /input -rajapintaan:
+
+{
+  "house": {"id": 1, "address": "Koivukuja 12, 00930 Helsinki, Finland",
+            "latitude": 60.2, "longitude": 24.94, "construction_year": 1978, ...},
+  "radius_km": 25.0,
+  "data_events": [                      # uusin ensin
+    {"location": {"latitude": 60.21, "longitude": 24.9},
+     "weather": {"forecast": [
+        {"date": "2026-10-17", "temperature": {"min_c": 7.9, "max_c": 13.8},
+         "rainfall_mm": 0.4, "wind": {"speed_m_s": 4.2, "direction": "S"}, "conditions": "cloudy"},
+        ...]},
+     "estate": {"construction_year": 1978, "renovation_years": [1998, 2015], ...}}
+  ]
+}
+"""
 
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class InputPayload(BaseModel):
-    """Esimerkki:
-
-    {
-      "source_id": "site-42",
-      "timestamp": "2026-10-17T08:00:00Z",
-      "area": "Helsinki",
-      "metrics": {"water_pressure_bar": 3.1, "flow_l_min": 0.0, "temperature_c": 19.5}
-    }
-    """
-
+class _Model(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    source_id: str = Field(min_length=1, max_length=200)
-    timestamp: datetime | None = None
-    area: str | None = Field(default=None, max_length=200)
-    metrics: dict[str, float]
 
-    @field_validator("metrics")
-    @classmethod
-    def _check_metrics(cls, value: dict[str, float]) -> dict[str, float]:
-        if not value:
-            raise ValueError("metrics ei saa olla tyhjä")
-        for name, number in value.items():
-            if not name or len(name) > 100:
-                raise ValueError(f"virheellinen mittarin nimi: {name!r}")
-            if not math.isfinite(number):
-                raise ValueError(f"mittarin {name} arvo ei ole äärellinen luku")
-        return value
+def _finite(value: float) -> float:
+    if not math.isfinite(value):
+        raise ValueError("arvo ei ole äärellinen luku")
+    return value
 
-    def epoch(self, now: int) -> int:
-        """Aikaleima unix-sekunteina. Puuttuva aikaleima = vastaanottohetki, ilman aikavyöhykettä = UTC."""
-        if self.timestamp is None:
-            return now
-        ts = self.timestamp
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
-        return int(ts.timestamp())
+
+class Temperature(_Model):
+    min_c: float
+    max_c: float
+
+    _check = field_validator("min_c", "max_c")(_finite)
+
+
+class Wind(_Model):
+    speed_m_s: float = Field(ge=0)
+    direction: str | None = None
+
+    _check = field_validator("speed_m_s")(_finite)
+
+
+class ForecastDay(_Model):
+    date: str
+    temperature: Temperature
+    rainfall_mm: float = Field(ge=0)
+    wind: Wind
+    conditions: str | None = None
+
+    _check = field_validator("rainfall_mm")(_finite)
+
+
+class Weather(_Model):
+    forecast: list[ForecastDay] = Field(min_length=1)
+
+
+class DataEvent(_Model):
+    location: dict[str, float] | None = None
+    weather: Weather
+    estate: dict[str, Any] | None = None
+
+
+class House(_Model):
+    id: int
+    address: str = Field(min_length=1, max_length=300)
+    latitude: float | None = None
+    longitude: float | None = None
+    construction_year: int | None = None
+    house_type: str | None = None
+    floor_area_m2: float | None = None
+    number_of_floors: int | None = None
+    condition: str | None = None
+
+
+class HouseEvents(_Model):
+    """Vastaus Data Consolidatorin GET /app/data_events/{house_id} -kutsuun."""
+
+    house: House
+    data_events: list[DataEvent] = Field(default_factory=list)

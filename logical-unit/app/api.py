@@ -1,7 +1,8 @@
 """HTTP-rajapinta.
 
-  POST /input            Data Consolidator lähettää JSONin (yksi viesti tai lista)
-  GET  /health           terveystarkistus (Docker, valvonta)
+  POST /input            Data Consolidatorin kohdedata käsin (sama muoto kuin GET /app/data_events/{id});
+                         normaalisti data haetaan automaattisesti (app/consolidator.py)
+  GET  /health           terveystarkistus
   GET  /alerts           hälytysten nykytila   } valinnainen lukurajapinta Appille, jos se ei
   GET  /alerts/{id}      yksittäinen hälytys   } lue SQLite-tiedostoa suoraan
   GET  /events           hälytysvirta kursorilla (after_id)
@@ -19,8 +20,9 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request
 from . import repository as repo
 from .config import Settings
 from .db import connect, session
+from .consolidator import ingest
 from .jobs import hourly_evaluation, purge
-from .models import InputPayload
+from .models import HouseEvents
 from .serializers import alert_to_dict
 
 router = APIRouter()
@@ -33,25 +35,15 @@ def _settings(request: Request) -> Settings:
 
 
 @router.post("/input", status_code=202)
-def receive_input(request: Request, body: InputPayload | list[InputPayload] = Body(...)) -> dict[str, Any]:
+def receive_input(request: Request, body: HouseEvents | list[HouseEvents] = Body(...)) -> dict[str, Any]:
     settings = _settings(request)
     payloads = body if isinstance(body, list) else [body]
     if len(payloads) > MAX_BATCH:
-        raise HTTPException(413, f"enintään {MAX_BATCH} viestiä kerralla")
-    now = int(time.time())
-    oldest_allowed = now - settings.retention_minutes * 60
-    accepted = skipped = 0
+        raise HTTPException(413, f"enintään {MAX_BATCH} kohdetta kerralla")
+    now = int(time.time())  # consolidatorin tapahtumissa ei ole aikaleimaa
     with session(settings.db_path) as conn:  # koko erä yhtenä transaktiona
-        for payload in payloads:
-            ts = payload.epoch(now)
-            if ts > now + settings.max_future_skew_seconds:
-                raise HTTPException(422, f"aikaleima on tulevaisuudessa (source_id={payload.source_id})")
-            if ts < oldest_allowed:
-                skipped += len(payload.metrics)  # vanhempi kuin säilytysikkuna, ei tallenneta
-                continue
-            repo.upsert_source(conn, payload.source_id, payload.area, ts)
-            accepted += repo.insert_readings(conn, payload.source_id, ts, payload.metrics)
-    return {"accepted_readings": accepted, "skipped_readings": skipped}
+        accepted = sum(ingest(conn, payload, now) for payload in payloads)
+    return {"accepted_readings": accepted, "houses_without_events": sum(not p.data_events for p in payloads)}
 
 
 @router.get("/health")
