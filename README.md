@@ -19,7 +19,7 @@ npm start
 
 ## Contributing
 
-Contributions are welcome. Open an issue or submit a pull request.
+Contributions are welcome. Open an issue or submit a merge request.
 
 ## License
 
