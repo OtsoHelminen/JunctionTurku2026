@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
     padding: 14,
     marginBottom: 10,

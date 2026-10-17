@@ -90,7 +90,6 @@ const styles = StyleSheet.create({
   },
   realEstateList: {
     gap: 14,
-    paddingBottom: 24,
   },
   realEstateItem: {
     width: 82,

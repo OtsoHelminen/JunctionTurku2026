@@ -10,7 +10,7 @@ export default function Header({ title }: HeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+    <View style={[styles.header, { paddingTop: Math.max(insets.top + 14, 16) }]}>
       <Text style={styles.title}>{title}</Text>
     </View>
   );
@@ -18,15 +18,15 @@ export default function Header({ title }: HeaderProps) {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#2563eb',
     paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingBottom: 18,
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#ffffff',
   },
 });

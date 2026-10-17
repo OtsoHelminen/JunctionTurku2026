@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { createHouse, fetchHouses } from '../api/houses';
 import AddRealEstateModal from '../components/realEstate/AddRealEstateModal';
 import DeveloperTools from '../components/realEstate/DeveloperTools';
@@ -121,17 +121,21 @@ export default function RealEstate() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <RealEstateSelector
-        entries={realEstates}
-        isLoading={isLoadingRealEstates}
-        selectedId={selectedRealEstateId}
-        error={realEstateError}
-        onSelect={setSelectedRealEstateId}
-        onAdd={() => {
-          setRealEstateError('');
-          setIsAddressModalVisible(true);
-        }}
-      />
+      {/* The selector's horizontal ScrollView grows to fill free space by default.
+          Wrapping it keeps it content-height so the sections sit right below it. */}
+      <View style={styles.selectorWrapper}>
+        <RealEstateSelector
+          entries={realEstates}
+          isLoading={isLoadingRealEstates}
+          selectedId={selectedRealEstateId}
+          error={realEstateError}
+          onSelect={setSelectedRealEstateId}
+          onAdd={() => {
+            setRealEstateError('');
+            setIsAddressModalVisible(true);
+          }}
+        />
+      </View>
 
       <WarningsSection alerts={alerts} />
       <OrderHelpSection experts={expertSuggestions} />
@@ -157,6 +161,8 @@ export default function RealEstate() {
         onSelectAddressSuggestion={handleSelectAddressSuggestion}
       />
 
+      {/* Pushes Developer tools to the bottom when the content is short */}
+      <View style={styles.spacer} />
       <DeveloperTools />
     </ScrollView>
   );
@@ -167,5 +173,12 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f8fafc',
     flexGrow: 1,
+  },
+  selectorWrapper: {
+    flexGrow: 0,
+  },
+  spacer: {
+    flexGrow: 1,
+    minHeight: 16,
   },
 });
