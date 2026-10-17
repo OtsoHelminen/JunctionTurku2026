@@ -34,6 +34,13 @@ ESTATE: dict[str, Any] = {
     "address": "Koivukuja 12, 00930 Helsinki, Finland",
 }
 
+# Events are scattered over a 50 km x 50 km area centered on Helsinki.
+AREA_CENTER_LAT = 60.20
+AREA_CENTER_LON = 24.94
+# 25 km in degrees: ~0.225 deg latitude, ~0.45 deg longitude at 60 deg N.
+AREA_HALF_LAT = 0.225
+AREA_HALF_LON = 0.45
+
 
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
@@ -118,7 +125,18 @@ class DataGenerator:
                     "conditions": _conditions(rain, max_c),
                 }
             )
-        event = {"weather": {"forecast": forecast}, "estate": self.estate}
+        location = {
+            "latitude": round(
+                self._rng.uniform(AREA_CENTER_LAT - AREA_HALF_LAT,
+                                  AREA_CENTER_LAT + AREA_HALF_LAT), 4
+            ),
+            "longitude": round(
+                self._rng.uniform(AREA_CENTER_LON - AREA_HALF_LON,
+                                  AREA_CENTER_LON + AREA_HALF_LON), 4
+            ),
+        }
+        event = {"location": location, "weather": {
+            "forecast": forecast}, "estate": self.estate}
         self.history.append(event)
         return event
 

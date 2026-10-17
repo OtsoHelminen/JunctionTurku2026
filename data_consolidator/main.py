@@ -12,15 +12,33 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
 from data_generator import HISTORY_SIZE, DataGenerator
-from db.database import add_house, connect, get_house, list_alerts, list_houses, record_alerts
+from db.database import add_house, connect, events_within_radius, get_house, list_houses
+
+# Radius around a house within which weather events are considered local.
+HOUSE_RADIUS_KM = 25.0
 
 # Coordinates of the generated estate (Koivukuja 12, 00930 Helsinki, Finland).
 DEFAULT_HOUSE_LAT = 60.20
 DEFAULT_HOUSE_LON = 24.94
 
 logger = logging.getLogger("data_consolidator")
+
+
+class HouseCreate(BaseModel):
+    """Payload for POST /app/houses."""
+
+    user_id: str = Field(min_length=1)
+    address: str = Field(min_length=1)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    construction_year: int | None = None
+    house_type: str | None = None
+    floor_area_m2: float | None = None
+    number_of_floors: int | None = None
+    condition: str | None = None
 
 
 def get_interval() -> float:
@@ -51,7 +69,8 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
         db = connect()
         app.state.db = db
         app.state.default_house_id = add_house(
-            db, gen.estate, DEFAULT_HOUSE_LAT, DEFAULT_HOUSE_LON)
+            db, gen.estate, DEFAULT_HOUSE_LAT, DEFAULT_HOUSE_LON, user_id="system"
+        )
         task = asyncio.create_task(_generate_loop(gen, period))
 
         def _on_done(t: asyncio.Task) -> None:
@@ -98,21 +117,28 @@ def create_app(interval: float | None = None, seed: int | None = None) -> FastAP
     def houses() -> dict[str, Any]:
         return {"houses": list_houses(app.state.db)}
 
-    @app.get("/app/houses/{house_id}/data_events")
+    @app.post("/app/houses", status_code=201)
+    def create_house(payload: HouseCreate) -> dict[str, Any]:
+        estate = payload.model_dump(
+            exclude={"user_id", "latitude", "longitude"})
+        house_id = add_house(
+            app.state.db, estate, payload.latitude, payload.longitude, payload.user_id
+        )
+        return {"house": get_house(app.state.db, house_id)}
+
+    @app.get("/app/data_events/{house_id}")
     def house_data_events(house_id: int) -> dict[str, Any]:
-        """Weather events for the area of the given house (matched by its location)."""
+        """Weather events within 25 km of the given house's location."""
         house = get_house(app.state.db, house_id)
         if house is None:
             raise HTTPException(status_code=404, detail="House not found")
-        events = app.state.generator.latest(HISTORY_SIZE)
-        record_alerts(app.state.db, house_id, events)
-        return {"house": house, "data_events": events}
-
-    @app.get("/app/houses/{house_id}/alerts")
-    def house_alerts(house_id: int) -> dict[str, Any]:
-        if get_house(app.state.db, house_id) is None:
-            raise HTTPException(status_code=404, detail="House not found")
-        return {"alerts": list_alerts(app.state.db, house_id)}
+        events = events_within_radius(
+            app.state.generator.latest(HISTORY_SIZE),
+            house["latitude"],
+            house["longitude"],
+            HOUSE_RADIUS_KM,
+        )
+        return {"house": house, "radius_km": HOUSE_RADIUS_KM, "data_events": events}
 
     return app
 

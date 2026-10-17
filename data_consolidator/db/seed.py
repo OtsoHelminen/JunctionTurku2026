@@ -20,8 +20,9 @@ LONGITUDE = 24.94
 
 def main() -> None:
     conn = connect()
-    house_id = add_house(conn, ESTATE, LATITUDE, LONGITUDE)
-    print(f"Seeded house id={house_id}: {ESTATE['address']} ({LATITUDE}, {LONGITUDE})")
+    house_id = add_house(conn, ESTATE, LATITUDE, LONGITUDE, user_id="system")
+    print(
+        f"Seeded house id={house_id}: {ESTATE['address']} ({LATITUDE}, {LONGITUDE})")
 
 
 if __name__ == "__main__":
