@@ -17,20 +17,30 @@ const URGENCY_STYLES: Record<
 
 const COLLAPSED_COUNT = 3;
 
-interface WarningsSectionProps {
+interface ActiveAlertSectionProps {
   /** Already filtered and sorted by urgency. */
   alerts: AlertEntry[];
 }
 
-export default function WarningsSection({ alerts }: WarningsSectionProps) {
+export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) {
   const [showAll, setShowAll] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const visibleAlerts = showAll ? alerts : alerts.slice(0, COLLAPSED_COUNT);
   const canToggle = alerts.length > COLLAPSED_COUNT;
+
+  const toggleExpanded = (id: number) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <View style={styles.section}>
       <View style={styles.headingRow}>
-        <Text style={styles.heading}>Warnings</Text>
+        <Text style={styles.heading}>Active alerts</Text>
         {canToggle && (
           <TouchableOpacity
             onPress={() => setShowAll((value) => !value)}
@@ -45,35 +55,48 @@ export default function WarningsSection({ alerts }: WarningsSectionProps) {
       {visibleAlerts.length === 0 ? (
         <View style={styles.emptyCard}>
           <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-          <Text style={styles.emptyText}>No active warnings</Text>
+          <Text style={styles.emptyText}>No active alerts</Text>
         </View>
       ) : (
         visibleAlerts.map((alert) => {
           const urgency = URGENCY_STYLES[alert.urgency];
+          const isExpanded = expandedIds.has(alert.id);
           return (
-            <View
+            <TouchableOpacity
               key={alert.id}
               style={[
                 styles.card,
                 { backgroundColor: urgency.background, borderLeftColor: urgency.accent },
               ]}
+              onPress={() => toggleExpanded(alert.id)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
               accessibilityLabel={`${urgency.label}: ${alert.title}`}
+              accessibilityHint={isExpanded ? 'Collapse alert' : 'Expand alert'}
+              accessibilityState={{ expanded: isExpanded }}
             >
               <Ionicons name={urgency.icon} size={26} color={urgency.accent} />
               <View style={styles.cardBody}>
-                <Text style={styles.cardTitle} numberOfLines={2}>
+                <Text style={styles.cardTitle} numberOfLines={isExpanded ? undefined : 2}>
                   {alert.title}
                 </Text>
                 {alert.subtitle ? (
-                  <Text style={styles.cardSubtitle} numberOfLines={2}>
+                  <Text style={styles.cardSubtitle} numberOfLines={isExpanded ? undefined : 2}>
                     {alert.subtitle}
                   </Text>
                 ) : null}
               </View>
-              <View style={[styles.chip, { backgroundColor: urgency.accent }]}>
-                <Text style={styles.chipText}>{urgency.label}</Text>
+              <View style={styles.cardSide}>
+                <View style={[styles.chip, { backgroundColor: urgency.accent }]}>
+                  <Text style={styles.chipText}>{urgency.label}</Text>
+                </View>
+                <Ionicons
+                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color="#64748b"
+                />
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })
       )}
@@ -128,8 +151,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#475569',
   },
+  cardSide: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
   chip: {
-    alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,

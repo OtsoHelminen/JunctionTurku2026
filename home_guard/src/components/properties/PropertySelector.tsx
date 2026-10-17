@@ -8,10 +8,10 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { RealEstateEntry } from './types';
+import type { PropertyEntry } from './types';
 
-interface RealEstateSelectorProps {
-  entries: RealEstateEntry[];
+interface PropertySelectorProps {
+  entries: PropertyEntry[];
   isLoading: boolean;
   selectedId: number | null;
   error: string;
@@ -19,83 +19,86 @@ interface RealEstateSelectorProps {
   onAdd: () => void;
 }
 
-export default function RealEstateSelector({
+export default function PropertySelector({
   entries,
   isLoading,
   selectedId,
   error,
   onSelect,
   onAdd,
-}: RealEstateSelectorProps) {
+}: PropertySelectorProps) {
   return (
     <>
-      <Text style={styles.realEstatesHeading}>Real estates</Text>
+      <View style={styles.propertiesHeadingRow}>
+        <Text style={styles.propertiesHeading}>Properties</Text>
+        {isLoading && <ActivityIndicator size="small" color="#2563eb" />}
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.realEstateList}
-        accessibilityLabel="Real estates"
+        contentContainerStyle={styles.propertyList}
+        accessibilityLabel="Properties"
       >
-        {isLoading && (
-          <View style={styles.realEstateLoading}>
-            <ActivityIndicator size="small" color="#2563eb" />
-          </View>
-        )}
-        {entries.map((realEstate) => {
-          const isSelected = selectedId === realEstate.id;
+        {entries.map((property) => {
+          const isSelected = selectedId === property.id;
           return (
             <TouchableOpacity
-              key={realEstate.id}
-              style={styles.realEstateItem}
-              onPress={() => onSelect(realEstate.id)}
+              key={property.id}
+              style={styles.propertyItem}
+              onPress={() => onSelect(property.id)}
               activeOpacity={0.75}
               accessibilityRole="button"
-              accessibilityLabel={realEstate.address}
+              accessibilityLabel={property.address}
               accessibilityState={{ selected: isSelected }}
             >
-              <View style={[styles.realEstateTile, isSelected && styles.realEstateTileSelected]}>
+              <View style={[styles.propertyTile, isSelected && styles.propertyTileSelected]}>
                 <Ionicons name="home" size={28} color={isSelected ? '#2563eb' : '#64748b'} />
               </View>
-              <Text style={styles.realEstateAddress} numberOfLines={1}>
-                {realEstate.address}
+              <Text style={styles.propertyAddress} numberOfLines={1}>
+                {property.address}
               </Text>
             </TouchableOpacity>
           );
         })}
 
         <TouchableOpacity
-          style={styles.realEstateItem}
+          style={styles.propertyItem}
           onPress={onAdd}
           activeOpacity={0.75}
           accessibilityRole="button"
-          accessibilityLabel="Add a real estate"
+          accessibilityLabel="Add a property"
         >
-          <View style={[styles.realEstateTile, styles.addRealEstateTile]}>
+          <View style={[styles.propertyTile, styles.addPropertyTile]}>
             <Ionicons name="add" size={30} color="#2563eb" />
           </View>
-          <Text style={styles.realEstateAddress}>Add real estate</Text>
+          <Text style={styles.propertyAddress}>Add property</Text>
         </TouchableOpacity>
       </ScrollView>
-      {error ? <Text style={styles.realEstateError}>{error}</Text> : null}
+      {error ? <Text style={styles.propertyError}>{error}</Text> : null}
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  realEstatesHeading: {
+  propertiesHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  propertiesHeading: {
     fontSize: 16,
     fontWeight: '700',
     color: '#0f172a',
-    marginBottom: 12,
   },
-  realEstateList: {
+  propertyList: {
     gap: 14,
   },
-  realEstateItem: {
+  propertyItem: {
     width: 82,
     alignItems: 'center',
   },
-  realEstateTile: {
+  propertyTile: {
     width: 68,
     height: 68,
     borderRadius: 14,
@@ -105,28 +108,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  realEstateTileSelected: {
+  propertyTileSelected: {
     borderColor: '#2563eb',
     backgroundColor: '#eff6ff',
   },
-  addRealEstateTile: {
+  addPropertyTile: {
     borderStyle: 'dashed',
     borderColor: '#93c5fd',
   },
-  realEstateAddress: {
+  propertyAddress: {
     width: '100%',
     marginTop: 6,
     fontSize: 11,
     color: '#475569',
     textAlign: 'center',
   },
-  realEstateLoading: {
-    width: 68,
-    height: 68,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  realEstateError: {
+  propertyError: {
     marginTop: -14,
     marginBottom: 14,
     color: '#b91c1c',

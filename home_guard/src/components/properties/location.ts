@@ -1,5 +1,5 @@
 import type { House } from '../../api/houses';
-import type { CityCoordinateBounds, Coordinates, RealEstateEntry } from './types';
+import type { CityCoordinateBounds, Coordinates, PropertyEntry } from './types';
 
 const CITY_COORDINATE_BOUNDS: Record<string, CityCoordinateBounds> = {
   Helsinki: { minLatitude: 60.14, maxLatitude: 60.28, minLongitude: 24.85, maxLongitude: 25.15 },
@@ -19,7 +19,7 @@ const CITY_COORDINATE_BOUNDS: Record<string, CityCoordinateBounds> = {
   Rovaniemi: { minLatitude: 66.46, maxLatitude: 66.56, minLongitude: 25.65, maxLongitude: 25.85 },
 };
 
-export function mapHouseToEntry(house: House): RealEstateEntry {
+export function mapHouseToEntry(house: House): PropertyEntry {
   return {
     id: house.id,
     address: house.address,

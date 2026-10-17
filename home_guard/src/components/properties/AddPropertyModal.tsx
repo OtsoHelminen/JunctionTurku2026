@@ -14,13 +14,13 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import MapPreview from './MapPreview';
 import type { Coordinates } from './types';
 
-interface AddRealEstateModalProps {
+interface AddPropertyModalProps {
   visible: boolean;
   address: string;
   addressSuggestions: string[];
   showAddressSuggestions: boolean;
   addressError: string;
-  realEstateError: string;
+  propertyError: string;
   previewCoordinates: Coordinates | null;
   isCreating: boolean;
   onClose: () => void;
@@ -30,13 +30,13 @@ interface AddRealEstateModalProps {
   onSelectAddressSuggestion: (address: string) => void;
 }
 
-export default function AddRealEstateModal({
+export default function AddPropertyModal({
   visible,
   address,
   addressSuggestions,
   showAddressSuggestions,
   addressError,
-  realEstateError,
+  propertyError,
   previewCoordinates,
   isCreating,
   onClose,
@@ -44,7 +44,7 @@ export default function AddRealEstateModal({
   onAddressChange,
   onAddressFocus,
   onSelectAddressSuggestion,
-}: AddRealEstateModalProps) {
+}: AddPropertyModalProps) {
   return (
     <Modal
       visible={visible}
@@ -62,9 +62,9 @@ export default function AddRealEstateModal({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.modalTitle}>Add a real estate</Text>
+            <Text style={styles.modalTitle}>Add a property</Text>
             <Text style={styles.modalDescription}>
-              Enter the address of the real estate you want to add.
+              Enter the address of the property you want to add.
             </Text>
             <TextInput
               style={[styles.addressInput, addressError && styles.addressInputError]}
@@ -81,7 +81,7 @@ export default function AddRealEstateModal({
               textContentType="none"
               returnKeyType="done"
               onSubmitEditing={onAdd}
-              accessibilityLabel="Real estate address"
+              accessibilityLabel="Property address"
             />
             {showAddressSuggestions && addressSuggestions.length > 0 && (
               <View style={styles.addressSuggestions}>
@@ -101,7 +101,7 @@ export default function AddRealEstateModal({
               </View>
             )}
             {addressError ? <Text style={styles.addressError}>{addressError}</Text> : null}
-            {realEstateError ? <Text style={styles.addressError}>{realEstateError}</Text> : null}
+            {propertyError ? <Text style={styles.addressError}>{propertyError}</Text> : null}
             {previewCoordinates ? (
               <View style={styles.mapSection}>
                 <Text style={styles.mapTitle}>Location</Text>

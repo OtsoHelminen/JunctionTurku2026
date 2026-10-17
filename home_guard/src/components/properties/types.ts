@@ -4,7 +4,7 @@ export interface ReceivedNotificationInfo {
   data: Record<string, unknown>;
 }
 
-export interface RealEstateEntry {
+export interface PropertyEntry {
   id: number;
   address: string;
   latitude: number;
