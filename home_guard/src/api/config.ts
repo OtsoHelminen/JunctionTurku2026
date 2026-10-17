@@ -1,3 +1,3 @@
 import Constants from 'expo-constants';
 
-export const API_URL = Constants.expoConfig?.extra?.apiUrl ?? 'http://10.88.1.28:8008';
+export const API_URL = Constants.expoConfig?.extra?.apiUrl ?? 'http://192.168.43.13:8008';
