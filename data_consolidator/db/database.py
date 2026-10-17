@@ -145,3 +145,15 @@ def get_push_token(conn: sqlite3.Connection, token: str) -> dict[str, Any] | Non
 def list_push_tokens(conn: sqlite3.Connection) -> list[str]:
     rows = conn.execute("SELECT token FROM push_tokens ORDER BY id").fetchall()
     return [r["token"] for r in rows]
+
+
+def list_push_devices(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Every registered device: token, platform and when it was last seen."""
+    rows = conn.execute(
+        """
+        SELECT id, token, platform, updated_at
+        FROM push_tokens
+        ORDER BY id
+        """
+    ).fetchall()
+    return [dict(r) for r in rows]
