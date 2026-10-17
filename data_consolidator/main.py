@@ -1,6 +1,6 @@
 """FastAPI server exposing generated data events.
 
-Run:  DATA_INTERVAL_SECONDS=60 uvicorn main:app --reload
+Run:  $DATA_INTERVAL_SECONDS=60 uvicorn main:app --reload
 """
 
 from __future__ import annotations
