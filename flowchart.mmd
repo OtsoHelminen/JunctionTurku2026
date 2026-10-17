@@ -1,0 +1,17 @@
+flowchart TB
+    %% Väri- ja tyylimäärittelyt
+    classDef database fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000
+    classDef ai fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
+    classDef app fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
+
+    %% Komponentit selkeillä muodoilla
+    DC[(Data Consolidator)]:::database
+    AI{{AI Inference Unit}}:::ai
+    APP([Mobile App Frontend]):::app
+
+    %% Yksinkertaistetut datavirrat
+    DC -- "Home & Weather Data" --> AI
+    AI -- "Alerts & Advice" --> DC
+    DC -- "Sync Alerts & Data" --> APP
+    APP -- "Registration & Commands" --> DC
+    APP -. "Analysis Requests" .-> AI
