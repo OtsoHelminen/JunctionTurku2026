@@ -1,3 +1,5 @@
+
+
 #!/usr/bin/env python3
 """Simple interactive CLI for the weather/house API. No extra packages needed.
 
@@ -11,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE = "http://localhost:8008"
+BASE = "http://localhost:8000"
 
 
 def call(method, path, body=None, params=None):
@@ -108,6 +110,7 @@ MENU = [
     ("Create house", create_house),
     ("Simulate storm", lambda: call("GET", "/app/simulate/storm")),
     ("Register device", register_device),
+    ("List devices (all stored tokens)", lambda: call("GET", "/app/devices")),
     ("Unregister device", lambda: call("DELETE", "/app/devices",
      params={"token": ask("token", required=True)})),
     ("Notify one device", lambda: call("POST", "/app/notify/" +
