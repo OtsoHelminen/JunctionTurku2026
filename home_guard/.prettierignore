@@ -1,0 +1,5 @@
+node_modules
+.expo
+dist
+.vscode
+pnpm-lock.yaml

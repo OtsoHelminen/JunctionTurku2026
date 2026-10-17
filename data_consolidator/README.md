@@ -6,12 +6,12 @@ FastAPI server that serves generated weather + estate events (schema: `data_temp
 uv sync
 cd data_consolidator
 $DATA_INTERVAL_SECONDS=60 
-uv run uvicorn main:app --reload   # interval defaults to 60 s
+uv run uvicorn main:app --reload --port 8008   # interval defaults to 60 s
 ```
 
 # API Endpoints
 
-**Base URL:** `http://localhost:8000`
+**Base URL:** `http://localhost:8008`
 
 | Method | Endpoint | Description | Required Payload / Parameters |
 | --- | --- | --- | --- |
@@ -89,12 +89,10 @@ All payload fields are optional. If omitted, the server uses the default notific
 ## Database (SQLite)
 
 The `db/` folder holds an SQLite database (`db/consolidator.db`, created on
-first use; override with `DATABASE_PATH`) with two tables:
+first use; override with `DATABASE_PATH`) with tables:
 
 - **houses** — tracked estates with their location (latitude/longitude).
-- **alerts** — warnings derived from a house's weather forecast
-  (`heavy_rain` ≥ 10 mm, `storm_wind` ≥ 15 m/s).
 
-The server seeds the generated estate as a house on startup. Endpoints:
+The server seeds the generated estate as a house on startup.
 
 Seed manually: `python -m db.seed`

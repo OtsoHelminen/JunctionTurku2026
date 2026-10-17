@@ -56,6 +56,15 @@ resolvers:
     priority: 5
     notes: Tulvapumput ja hiekkasäkit päivystyksenä
 
+  - name: Paloturva Esimerkki Oy
+    category: palo
+    areas: ["*"]
+    phone: "+358 40 000 0008"
+    email: palo@example.com
+    on_call: true
+    priority: 10
+    notes: Kipinäsuojaukset, kastelujärjestelmät ja paloturvallisuustarkastukset
+
   - name: Automaatiohuolto Esimerkki Oy
     category: automaatio
     areas: ["*"]
@@ -110,6 +119,30 @@ playbooks:
       - Varmista, että lämmitys toimii kaikissa tiloissa, myös kellarissa ja ryömintätilassa
       - Suojaa tai lämmitä jäätymiselle alttiit putket (lämmityskaapelit)
       - Jos vesi ei tule hanasta, sulje pääsulku ja tilaa LVI-asentaja
+  flood_warning:
+    category: kosteus
+    actions:
+      - Siirrä kellarista ja maanvaraisista tiloista arvotavarat ylemmäs
+      - Tarkista salaojakaivot, sadevesikaivot ja tulvapumpun toiminta
+      - Seuraa viranomaisten tulvatiedotteita
+  flood_severe:
+    category: kosteus
+    actions:
+      - Suojaa kellarin ovet ja ikkunat hiekkasäkeillä tai tulvaesteillä
+      - Katkaise sähköt tiloista, joihin vesi voi nousta
+      - Tilaa päivystävä tulvasuojaus ja seuraa pelastusviranomaisten ohjeita
+  forest_fire_warning:
+    category: palo
+    actions:
+      - Älä tee avotulta, grillaa tai polta risuja
+      - Poista kuivat lehdet ja risut katolta, ränneistä ja seinustoilta
+      - Varmista, että puutarhaletku ylettyy rakennuksen ympäri
+  forest_fire_severe:
+    category: palo
+    actions:
+      - Seuraa pelastusviranomaisten tiedotteita ja valmistaudu evakuointiin
+      - Sulje ikkunat, tuuletusaukot ja ilmanvaihto savun varalta
+      - Kastele rakennuksen lähiympäristö, jos se on turvallista
   no_data:
     category: automaatio
     actions:

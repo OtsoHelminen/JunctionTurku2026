@@ -6,8 +6,10 @@ hakee joka minuutti:
   GET {CONSOLIDATOR_URL}/app/houses                   seurattavat kohteet
   GET {CONSOLIDATOR_URL}/app/data_events/{house_id}   kohteen lähialueen säätapahtumat
 
-Jokaisesta kohteesta tallennetaan uusimman lähialueen tapahtuman ennuste mittareina
-(source_id = "house-<id>"). Sääntömoottori käsittelee niitä kuten mitä tahansa aikasarjaa.
+Vastauksessa on kohteen viimeisen tunnin tapahtumat (yksi minuutissa). Jokainen tallennetaan
+omalla aikaleimallaan mittareina (source_id = "house-<id>"); sama aikaleima uudestaan vain
+päivittää rivin, joten haun katkettua puuttuvat minuutit täydentyvät seuraavalla haulla.
+Sääntömoottori käsittelee mittareita kuten mitä tahansa aikasarjaa.
 """
 
 from __future__ import annotations
@@ -32,6 +34,12 @@ log = logging.getLogger(__name__)
 
 _POSTCODE_RE = re.compile(r"^\d{5}\s+")
 
+# Consolidatorin ääri-ilmiöt mittareiksi: 0 = ei varoitusta, 1 = warning, 2 = severe.
+EXTREME_METRICS = {"flood": "flood_level", "forest_fire": "forest_fire_level"}
+EXTREME_LEVELS = {"warning": 1.0, "severe": 2.0}
+# Kohteen tietokantarivin kentät, joista ei ole hyötyä agentille.
+_ESTATE_SKIP = {"id", "user_id", "latitude", "longitude", "created_at"}
+
 
 def source_id_for(house_id: int) -> str:
     return f"house-{house_id}"
@@ -50,7 +58,7 @@ def event_metrics(event: DataEvent) -> dict[str, float]:
     """Ennuste -> mittarit. Päivä 0 = tämä päivä, koko ennuste = tulevat päivät (yleensä 3)."""
     days = event.weather.forecast
     today = days[0]
-    return {
+    metrics = {
         "rain_today_mm": today.rainfall_mm,
         "wind_today_m_s": today.wind.speed_m_s,
         "temp_min_today_c": today.temperature.min_c,
@@ -59,29 +67,44 @@ def event_metrics(event: DataEvent) -> dict[str, float]:
         "wind_forecast_max_m_s": max(d.wind.speed_m_s for d in days),
         "temp_forecast_min_c": min(d.temperature.min_c for d in days),
     }
+    for metric in EXTREME_METRICS.values():  # 0 aina mukana, jotta hälytys kuittautuu
+        metrics[metric] = 0.0
+    for extreme in event.extremes:
+        metric = EXTREME_METRICS.get(extreme.type)
+        if metric:
+            metrics[metric] = max(metrics[metric], EXTREME_LEVELS.get(extreme.severity, 1.0))
+    return metrics
 
 
 def estate_info(payload: HouseEvents) -> dict[str, Any]:
     """Kohteen perustiedot agentille: consolidatorin house-rivi + tapahtuman estate-osa."""
-    info = payload.house.model_dump(exclude={"id", "latitude", "longitude"}, exclude_none=True)
+    info = payload.house.model_dump(exclude=_ESTATE_SKIP, exclude_none=True)
     if payload.data_events and payload.data_events[0].estate:
-        info.update(payload.data_events[0].estate)
+        info.update({k: v for k, v in payload.data_events[0].estate.items() if k not in _ESTATE_SKIP and v is not None})
     return info
 
 
-def ingest(conn: sqlite3.Connection, payload: HouseEvents, now: int) -> int:
-    """Tallentaa kohteen uusimman tapahtuman. Palauttaa tallennettujen lukemien määrän.
+def ingest(conn: sqlite3.Connection, payload: HouseEvents, now: int, settings: Settings) -> int:
+    """Tallentaa kohteen tapahtumat. Palauttaa tallennettujen lukemien määrän.
 
-    Jos lähialueelta ei ole tapahtumia, mitään ei tallenneta, joten no_data-sääntö huomaa katkon.
+    Säilytysikkunaa vanhemmat ja yli MAX_FUTURE_SKEW_SECONDS tulevaisuudessa olevat ohitetaan.
+    Jos kelvollisia tapahtumia ei ole, mitään ei tallenneta, joten no_data-sääntö huomaa katkon.
     """
-    if not payload.data_events:
+    oldest = now - settings.retention_minutes * 60
+    newest = now + settings.max_future_skew_seconds
+    events = [(event.epoch(now), event) for event in payload.data_events]
+    events = [(ts, event) for ts, event in events if oldest <= ts <= newest]
+    skipped = len(payload.data_events) - len(events)
+    if skipped:
+        log.debug("kohde %s: %d tapahtumaa aikaikkunan ulkopuolella", payload.house.id, skipped)
+    if not events:
         return 0
     source_id = source_id_for(payload.house.id)
     repo.upsert_source(
-        conn, source_id, area_from_address(payload.house.address), now,
+        conn, source_id, area_from_address(payload.house.address), max(ts for ts, _ in events),
         estate=json.dumps(estate_info(payload), ensure_ascii=False),
     )
-    return repo.insert_readings(conn, source_id, now, event_metrics(payload.data_events[0]))
+    return sum(repo.insert_readings(conn, source_id, ts, event_metrics(event)) for ts, event in events)
 
 
 def fetch_all(base_url: str, timeout: float, transport: httpx.BaseTransport | None = None) -> list[HouseEvents]:
@@ -103,7 +126,7 @@ def fetch_all(base_url: str, timeout: float, transport: httpx.BaseTransport | No
 def poll_once(settings: Settings, now: int) -> int:
     payloads = fetch_all(settings.consolidator_url, settings.consolidator_timeout_seconds)
     with session(settings.db_path) as conn:
-        return sum(ingest(conn, p, now) for p in payloads)
+        return sum(ingest(conn, p, now, settings) for p in payloads)
 
 
 async def run_poller(settings: Settings, stop: asyncio.Event) -> None:

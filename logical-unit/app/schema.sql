@@ -96,3 +96,9 @@ CREATE TABLE IF NOT EXISTS playbooks (
     category  TEXT NOT NULL,
     actions   TEXT NOT NULL                              -- JSON-lista merkkijonoja
 );
+
+-- Push-ilmoitusten lähettäjän kursori: viimeisin alert_events.id, joka on käsitelty.
+CREATE TABLE IF NOT EXISTS notifier_state (
+    id             INTEGER PRIMARY KEY CHECK (id = 1),
+    last_event_id  INTEGER NOT NULL
+);
