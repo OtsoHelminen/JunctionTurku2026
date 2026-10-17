@@ -1,0 +1,98 @@
+# Ratkaisijat ja pelikirjat. Ladataan tietokantaan käynnistyksessä, jos taulu on tyhjä,
+# tai komennolla:  python -m app.seed config/resolvers.yaml
+#
+# HUOM: alla olevat yritykset ja yhteystiedot ovat KEKSITTYJÄ esimerkkejä.
+# Korvaa ne oikeilla kumppaneilla ennen tuotantokäyttöä.
+
+resolvers:
+  - name: Esimerkki Putkihuolto Oy
+    category: putki
+    areas: [Helsinki, Espoo]
+    phone: "+358 40 000 0001"
+    email: putki@example.com
+    on_call: true
+    priority: 10
+    notes: Päivystys 24/7, sopimusasiakas
+
+  - name: Demo Putki ja Vesi Oy
+    category: putki
+    areas: [Vantaa]
+    phone: "+358 40 000 0002"
+    email: vesi@example.com
+    on_call: false
+    priority: 20
+
+  - name: Varaputki Esimerkki Ky
+    category: putki
+    areas: ["*"]
+    phone: "+358 40 000 0003"
+    email: varaputki@example.com
+    on_call: false
+    priority: 50
+    notes: Varakumppani koko pääkaupunkiseudulle
+
+  - name: Kaupunki-LVI Esimerkki Oy
+    category: lvi
+    areas: ["*"]
+    phone: "+358 40 000 0004"
+    email: lvi@example.com
+    on_call: true
+    priority: 10
+
+  - name: Kosteuskartoitus Demo Oy
+    category: kosteus
+    areas: ["*"]
+    phone: "+358 40 000 0005"
+    email: kosteus@example.com
+    on_call: false
+    priority: 10
+
+  - name: Automaatiohuolto Esimerkki Oy
+    category: automaatio
+    areas: ["*"]
+    phone: "+358 40 000 0006"
+    email: automaatio@example.com
+    on_call: true
+    priority: 10
+
+playbooks:
+  pressure_low:
+    category: putki
+    actions:
+      - Tarkista, onko alueella vesilaitoksen ilmoittamia katkoja tai korjaustöitä
+      - Tarkista paineenalennusventtiili ja suodattimet
+      - Jos paine jatkaa laskuaan, tilaa putkiasentaja
+  pressure_critical:
+    category: putki
+    actions:
+      - Tarkista välittömästi näkyvät vuodot ja sulje tarvittaessa pääsulku
+      - Tilaa päivystävä putkiasentaja
+  pressure_drop:
+    category: putki
+    actions:
+      - Vertaa virtausdataan; samanaikainen virtaus viittaa vuotoon
+      - Tarkista tekniset tilat ja runkolinja
+  continuous_flow:
+    category: putki
+    actions:
+      - Tarkista vuotavat hanat, WC-istuimet ja varaajan varoventtiili
+      - Jos syy ei löydy, tilaa vuodonetsintä
+  freezing_risk:
+    category: lvi
+    actions:
+      - Tarkista lämmityksen toiminta ja ovien sekä ikkunoiden sulkeutuminen
+      - Suojaa jäätymiselle alttiit putket
+  high_humidity:
+    category: kosteus
+    actions:
+      - Tarkista ilmanvaihdon toiminta
+      - Tarkista mahdolliset vesivuodot ja tilaa tarvittaessa kosteuskartoitus
+  pressure_sensor_flatline:
+    category: automaatio
+    actions:
+      - Tarkista anturin kytkennät ja tiedonsiirto
+      - Vertaa paikalliseen painemittariin
+  no_data:
+    category: automaatio
+    actions:
+      - Tarkista kohteen tiedonsiirtoyhteys ja Data Consolidatorin tila

@@ -1,0 +1,11 @@
+{
+  "source_id": "site-42",
+  "timestamp": "2026-10-17T08:00:00Z",
+  "area": "Helsinki",
+  "metrics": {
+    "water_pressure_bar": 3.05,
+    "flow_l_min": 0.0,
+    "temperature_c": 19.4,
+    "humidity_pct": 46.0
+  }
+}

@@ -1,0 +1,116 @@
+# Hälytyssäännöt. Nämä päättävät, syntyykö hälytys. Kielimalli EI päätä sitä.
+#
+# Yhteiset kentät:
+#   id         yksilöllinen tunniste (pelikirjat viittaavat tähän)
+#   type       threshold | change | sustained | flatline | missing_data
+#   metric     mittarin nimi syötteen "metrics"-objektissa (ei missing_data-säännöissä)
+#   severity   info | low | medium | high | critical
+#   message    teksti; käytettävissä {source_id}, {value} ja säännön details-kentät
+#   category   ratkaisijakategoria (putki, lvi, kosteus, automaatio...)
+#   group      saman ryhmän säännöt = yksi hälytys, vakavin voittaa (-> eskalointi)
+#   immediate  true = arvioidaan joka minuutti, ei odoteta tasatuntia
+#   sources    valinnainen lista source_id:itä, joita sääntö koskee (oletus: kaikki)
+#
+# Tyyppikohtaiset parametrit:
+#   threshold:    op (< <= > >=), value, aggregate (avg|min|max|last), window_minutes, min_points
+#   change:       pct (positiivinen), direction (down|up|any), window_minutes, compare_minutes
+#   sustained:    op, value, window_minutes, min_coverage (0–1), interval_seconds
+#   flatline:     window_minutes, min_points, tolerance
+#   missing_data: max_gap_minutes
+#
+# HUOM: mittarinimet ja raja-arvot ovat esimerkkejä. Sovi oikeat arvot alan asiantuntijan kanssa.
+
+rules:
+  # --- Vedenpaine: kaksi tasoa samassa ryhmässä -> medium eskaloituu criticaliksi
+  - id: pressure_low
+    group: water_pressure
+    type: threshold
+    metric: water_pressure_bar
+    op: "<"
+    value: 2.0
+    aggregate: avg
+    window_minutes: 15
+    min_points: 5
+    severity: medium
+    category: putki
+    message: "Vedenpaine matala kohteessa {source_id}: keskiarvo {value} bar (raja {threshold})"
+
+  - id: pressure_critical
+    group: water_pressure
+    type: threshold
+    metric: water_pressure_bar
+    op: "<"
+    value: 1.0
+    aggregate: last
+    window_minutes: 5
+    severity: critical
+    immediate: true
+    category: putki
+    message: "Vedenpaine kriittisen matala kohteessa {source_id}: {value} bar"
+
+  - id: pressure_drop
+    type: change
+    metric: water_pressure_bar
+    direction: down
+    pct: 25
+    window_minutes: 60
+    compare_minutes: 10
+    severity: high
+    category: putki
+    message: "Vedenpaine laskenut {abs_change_pct} % tunnin aikana kohteessa {source_id} ({baseline} -> {current} bar)"
+
+  # --- Jatkuva virtaus koko tunnin = mahdollinen vuoto
+  - id: continuous_flow
+    type: sustained
+    metric: flow_l_min
+    op: ">"
+    value: 0.5
+    window_minutes: 60
+    min_coverage: 0.8
+    severity: medium
+    category: putki
+    message: "Vesi on virrannut yhtäjaksoisesti {duration_minutes} min kohteessa {source_id} (vähintään {value} l/min), mahdollinen vuoto"
+
+  # --- Jäätymisriski: heti
+  - id: freezing_risk
+    type: threshold
+    metric: temperature_c
+    op: "<"
+    value: 3
+    aggregate: min
+    window_minutes: 10
+    severity: critical
+    immediate: true
+    category: lvi
+    message: "Jäätymisriski kohteessa {source_id}: lämpötila {value} °C"
+
+  # --- Kosteus
+  - id: high_humidity
+    type: sustained
+    metric: humidity_pct
+    op: ">"
+    value: 80
+    window_minutes: 60
+    severity: medium
+    category: kosteus
+    message: "Suhteellinen kosteus yli {threshold} % koko tunnin kohteessa {source_id}"
+
+  # --- Anturivika: arvo ei muutu lainkaan
+  - id: pressure_sensor_flatline
+    type: flatline
+    metric: water_pressure_bar
+    window_minutes: 60
+    min_points: 45
+    tolerance: 0.0
+    severity: low
+    category: automaatio
+    message: "Paineanturin arvo ei ole muuttunut tuntiin kohteessa {source_id} ({value} bar), mahdollinen anturivika"
+
+  # --- Data lakannut tulemasta
+  - id: no_data
+    type: missing_data
+    max_gap_minutes: 10
+    severity: high
+    immediate: true
+    category: automaatio
+    message: "Kohteesta {source_id} ei ole tullut dataa {gap_minutes} minuuttiin"
