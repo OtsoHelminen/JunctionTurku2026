@@ -33,7 +33,7 @@ To start the logical unit:
 
 ```
 cd logical-unit
-set -a && . ./.env && set +a          # Qwen-asetukset, ks. "Asetukset"
+set -a && . ./.env && set +a          # Qwen settings
 uv run uvicorn app.main:app --port 8001
 ```
 
