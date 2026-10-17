@@ -89,12 +89,10 @@ All payload fields are optional. If omitted, the server uses the default notific
 ## Database (SQLite)
 
 The `db/` folder holds an SQLite database (`db/consolidator.db`, created on
-first use; override with `DATABASE_PATH`) with two tables:
+first use; override with `DATABASE_PATH`) with tables:
 
 - **houses** — tracked estates with their location (latitude/longitude).
-- **alerts** — warnings derived from a house's weather forecast
-  (`heavy_rain` ≥ 10 mm, `storm_wind` ≥ 15 m/s).
 
-The server seeds the generated estate as a house on startup. Endpoints:
+The server seeds the generated estate as a house on startup.
 
 Seed manually: `python -m db.seed`
