@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useTheme } from '../../theme/ThemeContext';
 import type { Coordinates } from './types';
 
 const MAP_ZOOM = 8;
@@ -32,6 +33,7 @@ function getTilePosition(latitude: number, longitude: number) {
 export default function MapPreview({ coordinates }: { coordinates: Coordinates }) {
   const [mapWidth, setMapWidth] = useState(0);
   const [hasTileError, setHasTileError] = useState(false);
+  const { colors } = useTheme();
   const { tileX, tileY, fractionX, fractionY, tileCount } = getTilePosition(
     coordinates.latitude,
     coordinates.longitude
@@ -41,7 +43,10 @@ export default function MapPreview({ coordinates }: { coordinates: Coordinates }
 
   return (
     <View
-      style={styles.mapFrame}
+      style={[
+        styles.mapFrame,
+        { borderColor: colors.border, backgroundColor: colors.subtleSurface },
+      ]}
       onLayout={(event) => setMapWidth(event.nativeEvent.layout.width)}
       accessibilityLabel="Map preview showing the selected location"
     >

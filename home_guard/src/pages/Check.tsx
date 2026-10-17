@@ -1,11 +1,14 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function Check() {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Check</Text>
-      <Text style={styles.subtitle}>Empty page</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Check</Text>
+      <Text style={[styles.subtitle, { color: colors.mutedText }]}>Empty page</Text>
     </View>
   );
 }
@@ -15,17 +18,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
     padding: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#0f172a',
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
     marginTop: 8,
   },
 });

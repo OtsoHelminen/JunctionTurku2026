@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { PropertyEntry } from './types';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface PropertySelectorProps {
   entries: PropertyEntry[];
@@ -27,10 +28,12 @@ export default function PropertySelector({
   onSelect,
   onAdd,
 }: PropertySelectorProps) {
+  const { colors } = useTheme();
+
   return (
     <>
       <View style={styles.propertiesHeadingRow}>
-        <Text style={styles.propertiesHeading}>Properties</Text>
+        <Text style={[styles.propertiesHeading, { color: colors.text }]}>Properties</Text>
         {isLoading && <ActivityIndicator size="small" color="#2563eb" />}
       </View>
       <ScrollView
@@ -51,10 +54,22 @@ export default function PropertySelector({
               accessibilityLabel={property.address}
               accessibilityState={{ selected: isSelected }}
             >
-              <View style={[styles.propertyTile, isSelected && styles.propertyTileSelected]}>
+              <View
+                style={[
+                  styles.propertyTile,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  isSelected && [
+                    styles.propertyTileSelected,
+                    { backgroundColor: colors.selectedSurface },
+                  ],
+                ]}
+              >
                 <Ionicons name="home" size={28} color={isSelected ? '#2563eb' : '#64748b'} />
               </View>
-              <Text style={styles.propertyAddress} numberOfLines={1}>
+              <Text
+                style={[styles.propertyAddress, { color: colors.secondaryText }]}
+                numberOfLines={1}
+              >
                 {property.address}
               </Text>
             </TouchableOpacity>
@@ -68,10 +83,18 @@ export default function PropertySelector({
           accessibilityRole="button"
           accessibilityLabel="Add a property"
         >
-          <View style={[styles.propertyTile, styles.addPropertyTile]}>
+          <View
+            style={[
+              styles.propertyTile,
+              styles.addPropertyTile,
+              { backgroundColor: colors.surface },
+            ]}
+          >
             <Ionicons name="add" size={30} color="#2563eb" />
           </View>
-          <Text style={styles.propertyAddress}>Add property</Text>
+          <Text style={[styles.propertyAddress, { color: colors.secondaryText }]}>
+            Add property
+          </Text>
         </TouchableOpacity>
       </ScrollView>
       {error ? <Text style={styles.propertyError}>{error}</Text> : null}

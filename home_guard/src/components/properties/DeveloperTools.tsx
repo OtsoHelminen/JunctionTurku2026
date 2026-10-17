@@ -10,9 +10,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { registerForPush, sendTestLocalNotification } from '../../api/notifications';
+import { useTheme } from '../../theme/ThemeContext';
 import type { ReceivedNotificationInfo } from './types';
 
 export default function DeveloperTools() {
+  const { colors, isDark } = useTheme();
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>('Press button to request token');
@@ -82,19 +84,27 @@ export default function DeveloperTools() {
   return (
     <>
       <TouchableOpacity
-        style={styles.developerToolsToggle}
+        style={[styles.developerToolsToggle, { borderTopColor: colors.border }]}
         onPress={() => setIsExpanded((expanded) => !expanded)}
         activeOpacity={0.75}
         accessibilityRole="button"
         accessibilityLabel="Developer tools"
         accessibilityState={{ expanded: isExpanded }}
       >
-        <Text style={styles.developerToolsTitle}>Developer tools</Text>
-        <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color="#64748b" />
+        <Text style={[styles.developerToolsTitle, { color: colors.mutedText }]}>
+          Developer tools
+        </Text>
+        <Ionicons
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={18}
+          color={colors.mutedText}
+        />
       </TouchableOpacity>
       {isExpanded && (
         <View style={styles.developerToolsContent}>
-          <Text style={styles.subheading}>Push Notification Tester</Text>
+          <Text style={[styles.subheading, { color: colors.mutedText }]}>
+            Push Notification Tester
+          </Text>
 
           <View style={styles.buttonGroup}>
             <TouchableOpacity
@@ -111,35 +121,78 @@ export default function DeveloperTools() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, styles.secondaryButton]}
+              style={[
+                styles.button,
+                styles.secondaryButton,
+                { backgroundColor: colors.surface, borderColor: colors.inputBorder },
+              ]}
               onPress={handleSendTestNotification}
               activeOpacity={0.8}
             >
-              <Text style={styles.secondaryButtonText}>Send Test Notification</Text>
+              <Text style={[styles.secondaryButtonText, { color: colors.secondaryText }]}>
+                Send Test Notification
+              </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.card, isError ? styles.cardError : styles.cardInfo]}>
-            <Text style={styles.cardLabel}>Status</Text>
-            <Text style={[styles.cardText, isError && styles.errorText]}>{statusMessage}</Text>
+          <View
+            style={[
+              styles.card,
+              isError ? styles.cardError : [styles.cardInfo, isDark && styles.darkCardInfo],
+            ]}
+          >
+            <Text style={[styles.cardLabel, { color: colors.mutedText }]}>Status</Text>
+            <Text style={[styles.cardText, { color: colors.text }, isError && styles.errorText]}>
+              {statusMessage}
+            </Text>
           </View>
 
           {token && (
-            <View style={styles.tokenCard}>
-              <Text style={styles.cardLabel}>Expo Push Token (Select & Copy):</Text>
-              <Text style={styles.tokenText} selectable>
+            <View
+              style={[
+                styles.tokenCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.cardLabel, { color: colors.mutedText }]}>
+                Expo Push Token (Select & Copy):
+              </Text>
+              <Text
+                style={[
+                  styles.tokenText,
+                  { color: colors.text, backgroundColor: colors.subtleSurface },
+                ]}
+                selectable
+              >
                 {token}
               </Text>
             </View>
           )}
 
           {lastNotification && (
-            <View style={styles.receivedCard}>
-              <Text style={styles.cardLabel}>Last Received Notification:</Text>
-              <Text style={styles.notificationTitle}>{lastNotification.title ?? 'No title'}</Text>
-              <Text style={styles.notificationBody}>{lastNotification.body ?? 'No body'}</Text>
+            <View
+              style={[
+                styles.receivedCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.cardLabel, { color: colors.mutedText }]}>
+                Last Received Notification:
+              </Text>
+              <Text style={[styles.notificationTitle, { color: colors.text }]}>
+                {lastNotification.title ?? 'No title'}
+              </Text>
+              <Text style={[styles.notificationBody, { color: colors.secondaryText }]}>
+                {lastNotification.body ?? 'No body'}
+              </Text>
               {Object.keys(lastNotification.data).length > 0 && (
-                <Text style={styles.notificationData} selectable>
+                <Text
+                  style={[
+                    styles.notificationData,
+                    { color: colors.mutedText, backgroundColor: colors.subtleSurface },
+                  ]}
+                  selectable
+                >
                   Data: {JSON.stringify(lastNotification.data, null, 2)}
                 </Text>
               )}
@@ -214,6 +267,10 @@ const styles = StyleSheet.create({
   cardInfo: {
     backgroundColor: '#eff6ff',
     borderColor: '#bfdbfe',
+  },
+  darkCardInfo: {
+    backgroundColor: '#172554',
+    borderColor: '#1e40af',
   },
   cardError: {
     backgroundColor: '#fef2f2',

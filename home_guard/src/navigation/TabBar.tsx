@@ -2,8 +2,9 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TabItem, { IconName } from './TabItem';
+import { useTheme } from '../theme/ThemeContext';
 
-export type TabName = 'Home' | 'Info' | 'Check' | 'Profile';
+export type TabName = 'Home' | 'Info' | 'Check' | 'Settings';
 
 interface TabBarProps {
   activeTab: TabName;
@@ -37,18 +38,28 @@ const TABS: TabConfig[] = [
     inactiveIcon: 'checkmark-circle-outline',
   },
   {
-    name: 'Profile',
-    label: 'Profile',
-    activeIcon: 'person',
-    inactiveIcon: 'person-outline',
+    name: 'Settings',
+    label: 'Settings',
+    activeIcon: 'settings',
+    inactiveIcon: 'settings-outline',
   },
 ];
 
 export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   return (
-    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+    <View
+      style={[
+        styles.tabBar,
+        {
+          paddingBottom: Math.max(insets.bottom, 12),
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
+      ]}
+    >
       {TABS.map((tab) => (
         <TabItem
           key={tab.name}

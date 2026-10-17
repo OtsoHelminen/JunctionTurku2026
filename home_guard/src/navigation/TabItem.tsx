@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../theme/ThemeContext';
 
 export type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -19,7 +20,8 @@ export default function TabItem({
   isActive,
   onPress,
 }: TabItemProps) {
-  const iconColor = isActive ? '#2563eb' : '#64748b';
+  const { colors } = useTheme();
+  const iconColor = isActive ? '#2563eb' : colors.mutedText;
   const iconName = isActive ? activeIcon : inactiveIcon;
 
   return (
@@ -31,7 +33,9 @@ export default function TabItem({
       accessibilityState={{ selected: isActive }}
     >
       <Ionicons name={iconName} size={22} color={iconColor} style={styles.icon} />
-      <Text style={[styles.label, isActive && styles.activeLabel]}>{label}</Text>
+      <Text style={[styles.label, { color: colors.mutedText }, isActive && styles.activeLabel]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
