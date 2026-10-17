@@ -18,16 +18,24 @@ SEVERITY_SQL = (
 
 # ---------------------------------------------------------------- lähteet ja lukemat
 
-def upsert_source(conn: sqlite3.Connection, source_id: str, area: str | None, ts: int) -> None:
+def upsert_source(
+    conn: sqlite3.Connection, source_id: str, area: str | None, ts: int, estate: str | None = None
+) -> None:
     conn.execute(
         """
-        INSERT INTO sources (source_id, area, first_seen, last_seen) VALUES (?, ?, ?, ?)
+        INSERT INTO sources (source_id, area, estate, first_seen, last_seen) VALUES (?, ?, ?, ?, ?)
         ON CONFLICT (source_id) DO UPDATE SET
             area = COALESCE(excluded.area, sources.area),
+            estate = COALESCE(excluded.estate, sources.estate),
             last_seen = MAX(sources.last_seen, excluded.last_seen)
         """,
-        (source_id, area, ts, ts),
+        (source_id, area, estate, ts, ts),
     )
+
+
+def get_estate(conn: sqlite3.Connection, source_id: str) -> dict[str, Any] | None:
+    row = conn.execute("SELECT estate FROM sources WHERE source_id = ?", (source_id,)).fetchone()
+    return json.loads(row["estate"]) if row and row["estate"] else None
 
 
 def insert_readings(conn: sqlite3.Connection, source_id: str, ts: int, metrics: dict[str, float]) -> int:
