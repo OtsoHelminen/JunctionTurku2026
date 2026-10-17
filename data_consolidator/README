@@ -1,0 +1,12 @@
+# Data Consolidator
+
+FastAPI server that serves generated weather + estate events (schema: `data_template.json`).
+
+```bash
+pip install fastapi uvicorn
+cd data_consolidator
+DATA_INTERVAL_SECONDS=60 uvicorn main:app   # interval defaults to 60 s
+curl localhost:8000/app/data_events         # latest 60 events, newest first
+```
+
+Tests: `pip install pytest httpx && python -m pytest tests`
