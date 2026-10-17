@@ -83,7 +83,7 @@ TOOLS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "find_resolvers",
-            "description": "Finds resolver partners by category (katto = roof, kosteus = moisture/flooding, lvi = plumbing/heating, palo = fire, automaatio = automation) in the alert's area.",
+            "description": "Finds resolver partners by category (roof, moisture = moisture/flooding, plumbing = plumbing/heating, fire, automation) in the alert's area.",
             "parameters": {
                 "type": "object",
                 "properties": {"category": {"type": "string"}},
@@ -176,7 +176,7 @@ def analyze_alert(
             continue
         return _build_analysis(conn, alert_row, output, offered_ids, client.model, now)
 
-    raise AgentError(f"agentti ei antanut kelvollista vastausta {settings.agent_max_steps} askeleessa")
+    raise AgentError(f"agent gave no valid answer in {settings.agent_max_steps} steps")
 
 
 def fallback_analysis(conn: sqlite3.Connection, alert_row: sqlite3.Row, now: int, reason: str) -> dict[str, Any]:
@@ -286,7 +286,7 @@ def _parse_output(content: str) -> AgentOutput:
     text = _THINK_RE.sub("", content).strip()
     start, end = text.find("{"), text.rfind("}")
     if start == -1 or end <= start:
-        raise ValueError("JSON-objektia ei löytynyt")
+        raise ValueError("no JSON object found")
     return AgentOutput.model_validate(json.loads(text[start : end + 1]))
 
 

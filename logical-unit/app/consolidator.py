@@ -93,10 +93,13 @@ def ingest(conn: sqlite3.Connection, payload: HouseEvents, now: int, settings: S
     oldest = now - settings.retention_minutes * 60
     newest = now + settings.max_future_skew_seconds
     events = [(event.epoch(now), event) for event in payload.data_events]
+    future = sum(1 for ts, _ in events if ts > newest)
+    if future:  # näkyvä varoitus: muuten kaikki data katoaa hiljaa
+        log.warning(
+            "house %s: skipped %d events more than %d s in the future (consolidator clock ahead)",
+            payload.house.id, future, settings.max_future_skew_seconds,
+        )
     events = [(ts, event) for ts, event in events if oldest <= ts <= newest]
-    skipped = len(payload.data_events) - len(events)
-    if skipped:
-        log.debug("kohde %s: %d tapahtumaa aikaikkunan ulkopuolella", payload.house.id, skipped)
     if not events:
         return 0
     source_id = source_id_for(payload.house.id)
@@ -119,7 +122,7 @@ def fetch_all(base_url: str, timeout: float, transport: httpx.BaseTransport | No
                 r.raise_for_status()
                 result.append(HouseEvents.model_validate(r.json()))
             except (httpx.HTTPError, ValidationError, KeyError, ValueError) as exc:
-                log.warning("kohteen %s data ohitettiin: %s", house.get("id"), exc)
+                log.warning("skipped data for house %s: %s", house.get("id"), exc)
     return result
 
 
@@ -130,15 +133,15 @@ def poll_once(settings: Settings, now: int) -> int:
 
 
 async def run_poller(settings: Settings, stop: asyncio.Event) -> None:
-    log.info("haetaan dataa %s %d s välein", settings.consolidator_url, settings.poll_seconds)
+    log.info("polling %s every %d s", settings.consolidator_url, settings.poll_seconds)
     while not stop.is_set():
         try:
             stored = await asyncio.to_thread(poll_once, settings, int(time.time()))
-            log.debug("consolidator: %d lukemaa", stored)
+            log.debug("consolidator: %d readings", stored)
         except httpx.HTTPError as exc:  # consolidator alhaalla -> no_data-sääntö hälyttää
-            log.warning("Data Consolidator ei vastaa: %s", exc)
+            log.warning("Data Consolidator not responding: %s", exc)
         except Exception:
-            log.exception("datan haku epäonnistui")
+            log.exception("data fetch failed")
         try:
             await asyncio.wait_for(stop.wait(), timeout=settings.poll_seconds)
         except asyncio.TimeoutError:

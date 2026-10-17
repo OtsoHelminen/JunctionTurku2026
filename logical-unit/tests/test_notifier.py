@@ -56,7 +56,7 @@ def test_alert_lifecycle_is_pushed_to_app(settings, rules):
     assert [p["data"]["event_type"] for p in fake.sent] == ["created", "analyzed", "escalated", "resolved"]
 
     created, analyzed, escalated, resolved = fake.sent
-    assert created["title"] == "Vakava hälytys – Helsinki"
+    assert created["title"] == "High alert – Helsinki"
     assert created["data"]["kind"] == "alert" and created["data"]["house_id"] == 1
     assert created["data"]["rule_id"] == "heavy_rain" and created["sound"] == "default"
     assert analyzed["body"] == ("Clean the gutters and downspouts before the rain"
@@ -66,7 +66,7 @@ def test_alert_lifecycle_is_pushed_to_app(settings, rules):
         "price_min_eur": 150, "price_max_eur": 400,
     }
     assert created["data"]["expert"] is None  # analyysi ei vielä valmis
-    assert escalated["title"] == "Hälytys paheni: Kriittinen – Helsinki"
+    assert escalated["title"] == "Alert escalated: Critical – Helsinki"
     assert resolved["data"]["status"] == "resolved" and resolved["sound"] is None
     assert len({p["data"]["alert_id"] for p in fake.sent}) == 1
 

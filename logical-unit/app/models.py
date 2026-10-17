@@ -37,7 +37,7 @@ class _Model(BaseModel):
 
 def _finite(value: float) -> float:
     if not math.isfinite(value):
-        raise ValueError("arvo ei ole äärellinen luku")
+        raise ValueError("value is not a finite number")
     return value
 
 
@@ -70,7 +70,7 @@ class Weather(_Model):
 
 
 class Extreme(_Model):
-    """Consolidatorin vyöhykkeelle laskema ääri-ilmiö, esim. flood tai forest_fire."""
+    """Extreme event computed by the consolidator for a zone, e.g. flood or forest_fire."""
 
     type: str
     severity: str                       # warning | severe
@@ -107,7 +107,7 @@ class House(_Model):
 
 
 class HouseEvents(_Model):
-    """Vastaus Data Consolidatorin GET /app/data_events/{house_id} -kutsuun."""
+    """Response of the Data Consolidator GET /app/data_events/{house_id} call."""
 
     house: House
     data_events: list[DataEvent] = Field(default_factory=list)

@@ -73,7 +73,7 @@ def seed_if_empty(settings: Settings) -> None:
         return
     with session(settings.db_path) as conn:
         n_res, n_pb = apply_seed(conn, load_seed_file(path))
-    log.info("ladattiin %d ratkaisijaa ja %d pelikirjaa tiedostosta %s", n_res, n_pb, path)
+    log.info("loaded %d resolvers and %d playbooks from %s", n_res, n_pb, path)
 
 
 def main() -> None:
@@ -82,7 +82,7 @@ def main() -> None:
     init_db(settings.db_path)
     with session(settings.db_path) as conn:
         n_res, n_pb = apply_seed(conn, load_seed_file(path))
-    print(f"Päivitetty {n_res} ratkaisijaa ja {n_pb} pelikirjaa ({settings.db_path})")
+    print(f"Updated {n_res} resolvers and {n_pb} playbooks ({settings.db_path})")
 
 
 if __name__ == "__main__":

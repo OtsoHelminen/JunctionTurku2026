@@ -1,40 +1,40 @@
-# Hälytyssäännöt. Nämä päättävät, syntyykö hälytys. Kielimalli EI päätä sitä.
+# Alert rules. These decide whether an alert is raised. The language model does NOT decide that.
 #
-# Data tulee Data Consolidatorilta (app/consolidator.py). Jokaisesta kohteesta tallennetaan
-# minuutin välein lähialueen sääennusteen arvot:
-#   rain_today_mm            tämän päivän sademäärä
-#   wind_today_m_s           tämän päivän tuulen nopeus
-#   temp_min_today_c         tämän päivän alin lämpötila
-#   temp_max_today_c         tämän päivän ylin lämpötila
-#   rain_forecast_total_mm   sademäärä yhteensä koko ennusteen ajalta (yleensä 3 vrk)
-#   wind_forecast_max_m_s    kovin tuuli koko ennusteen aikana
-#   temp_forecast_min_c      alin lämpötila koko ennusteen aikana
-#   flood_level              consolidatorin tulvavaroitus: 0 ei, 1 warning, 2 severe
-#   forest_fire_level        consolidatorin maastopalovaroitus: 0 ei, 1 warning, 2 severe
+# Data comes from the Data Consolidator (app/consolidator.py). For every house the forecast values
+# of the surrounding area are stored once a minute:
+#   rain_today_mm            rainfall today
+#   wind_today_m_s           wind speed today
+#   temp_min_today_c         lowest temperature today
+#   temp_max_today_c         highest temperature today
+#   rain_forecast_total_mm   total rainfall over the whole forecast (usually 3 days)
+#   wind_forecast_max_m_s    strongest wind over the whole forecast
+#   temp_forecast_min_c      lowest temperature over the whole forecast
+#   flood_level              consolidator flood warning: 0 none, 1 warning, 2 severe
+#   forest_fire_level        consolidator wildfire warning: 0 none, 1 warning, 2 severe
 #
-# Yhteiset kentät:
-#   id         yksilöllinen tunniste (pelikirjat viittaavat tähän)
+# Common fields:
+#   id         unique identifier (playbooks refer to this)
 #   type       threshold | change | sustained | flatline | missing_data
-#   metric     mittarin nimi (yllä; ei missing_data-säännöissä)
+#   metric     metric name (above; not used in missing_data rules)
 #   severity   info | low | medium | high | critical
-#   message    teksti; käytettävissä {source_id}, {value} ja säännön details-kentät
-#   category   ratkaisijakategoria (katto, kosteus, lvi, palo, automaatio)
-#   group      saman ryhmän säännöt = yksi hälytys, vakavin voittaa (-> eskalointi)
-#   immediate  true = arvioidaan joka minuutti, ei odoteta tasatuntia
-#   sources    valinnainen lista source_id:itä, joita sääntö koskee (oletus: kaikki)
+#   message    text; {source_id}, {value} and the rule's details fields are available
+#   category   resolver category (roof, moisture, plumbing, fire, automation)
+#   group      rules in the same group = one alert, the most severe wins (-> escalation)
+#   immediate  true = evaluated every minute instead of waiting for the full hour
+#   sources    optional list of source_ids the rule applies to (default: all)
 #
-# Tyyppikohtaiset parametrit:
+# Type-specific parameters:
 #   threshold:    op (< <= > >=), value, aggregate (avg|min|max|last), window_minutes, min_points
-#   change:       pct (positiivinen), direction (down|up|any), window_minutes, compare_minutes
+#   change:       pct (positive), direction (down|up|any), window_minutes, compare_minutes
 #   sustained:    op, value, window_minutes, min_coverage (0–1), interval_seconds
 #   flatline:     window_minutes, min_points, tolerance
 #   missing_data: max_gap_minutes
 #
-# HUOM: raja-arvot ovat esimerkkejä (Ilmatieteen laitoksen varoitusrajojen tapaisia).
-# Sovi lopulliset arvot asiantuntijan kanssa.
+# NOTE: the thresholds are examples (similar to the Finnish Meteorological Institute's warning limits).
+# Agree on the final values with an expert.
 
 rules:
-  # --- Sade: rankkasade (high) eskaloituu erittäin rankaksi (critical)
+  # --- Rain: heavy rain (high) escalates to very heavy rain (critical)
   - id: heavy_rain
     group: rain
     type: threshold
@@ -45,8 +45,8 @@ rules:
     window_minutes: 15
     min_points: 3
     severity: high
-    category: katto
-    message: "Rankkasade kohteessa {source_id}: ennuste {value} mm tänään (raja {threshold} mm)"
+    category: roof
+    message: "Heavy rain at {source_id}: {value} mm forecast today (limit {threshold} mm)"
 
   - id: extreme_rain
     group: rain
@@ -58,10 +58,10 @@ rules:
     window_minutes: 5
     severity: critical
     immediate: true
-    category: kosteus
-    message: "Erittäin rankka sade kohteessa {source_id}: ennuste {value} mm tänään, tulvariski"
+    category: moisture
+    message: "Very heavy rain at {source_id}: {value} mm forecast today, flood risk"
 
-  # --- Sateen kertymä lähipäivinä: salaojat ja perustukset
+  # --- Rain accumulating over the coming days: drains and foundations
   - id: rain_accumulation
     type: threshold
     metric: rain_forecast_total_mm
@@ -71,10 +71,10 @@ rules:
     window_minutes: 15
     min_points: 3
     severity: medium
-    category: kosteus
-    message: "Lähipäivien sademäärä kohteessa {source_id} yhteensä {value} mm (raja {threshold} mm)"
+    category: moisture
+    message: "Rain over the coming days at {source_id} totals {value} mm (limit {threshold} mm)"
 
-  # --- Tuuli: tuleva myrsky (medium) -> myrsky tänään (high) -> kova myrsky (critical)
+  # --- Wind: storm ahead (medium) -> storm today (high) -> severe storm (critical)
   - id: storm_forecast
     group: wind
     type: threshold
@@ -85,8 +85,8 @@ rules:
     window_minutes: 15
     min_points: 3
     severity: medium
-    category: katto
-    message: "Myrsky ennusteessa kohteelle {source_id}: tuulta jopa {value} m/s lähipäivinä"
+    category: roof
+    message: "Storm in the forecast for {source_id}: wind up to {value} m/s in the coming days"
 
   - id: storm_wind
     group: wind
@@ -98,8 +98,8 @@ rules:
     window_minutes: 15
     min_points: 3
     severity: high
-    category: katto
-    message: "Myrsky kohteessa {source_id} tänään: tuuli {value} m/s (raja {threshold} m/s)"
+    category: roof
+    message: "Storm at {source_id} today: wind {value} m/s (limit {threshold} m/s)"
 
   - id: severe_storm
     group: wind
@@ -111,10 +111,10 @@ rules:
     window_minutes: 5
     severity: critical
     immediate: true
-    category: katto
-    message: "Kova myrsky kohteessa {source_id}: tuuli {value} m/s"
+    category: roof
+    message: "Severe storm at {source_id}: wind {value} m/s"
 
-  # --- Pakkanen: jäätymisriski (medium) -> kova pakkanen (high)
+  # --- Frost: freezing risk (medium) -> hard frost (high)
   - id: frost_forecast
     group: frost
     type: threshold
@@ -125,8 +125,8 @@ rules:
     window_minutes: 15
     min_points: 3
     severity: medium
-    category: lvi
-    message: "Pakkasta ennusteessa kohteelle {source_id}: alimmillaan {value} °C"
+    category: plumbing
+    message: "Frost in the forecast for {source_id}: down to {value} °C"
 
   - id: hard_frost
     group: frost
@@ -138,10 +138,10 @@ rules:
     window_minutes: 15
     min_points: 3
     severity: high
-    category: lvi
-    message: "Kova pakkanen kohteessa {source_id} tänään: {value} °C, putkien jäätymisriski"
+    category: plumbing
+    message: "Hard frost at {source_id} today: {value} °C, risk of frozen pipes"
 
-  # --- Consolidatorin vyöhykevaroitukset (consolidator hoitaa hystereesin, joten last + heti)
+  # --- Consolidator zone warnings (the consolidator handles hysteresis, so last + immediate)
   - id: flood_warning
     group: flood
     type: threshold
@@ -152,8 +152,8 @@ rules:
     window_minutes: 5
     severity: high
     immediate: true
-    category: kosteus
-    message: "Tulvavaroitus kohteen {source_id} alueella"
+    category: moisture
+    message: "Flood warning in the area of {source_id}"
 
   - id: flood_severe
     group: flood
@@ -165,8 +165,8 @@ rules:
     window_minutes: 5
     severity: critical
     immediate: true
-    category: kosteus
-    message: "Vakava tulvavaroitus kohteen {source_id} alueella"
+    category: moisture
+    message: "Severe flood warning in the area of {source_id}"
 
   - id: forest_fire_warning
     group: forest_fire
@@ -178,8 +178,8 @@ rules:
     window_minutes: 5
     severity: high
     immediate: true
-    category: palo
-    message: "Maastopalovaroitus kohteen {source_id} alueella"
+    category: fire
+    message: "Wildfire warning in the area of {source_id}"
 
   - id: forest_fire_severe
     group: forest_fire
@@ -191,14 +191,14 @@ rules:
     window_minutes: 5
     severity: critical
     immediate: true
-    category: palo
-    message: "Vakava maastopalovaroitus kohteen {source_id} alueella"
+    category: fire
+    message: "Severe wildfire warning in the area of {source_id}"
 
-  # --- Data lakannut tulemasta (Data Consolidator alhaalla tai ei tapahtumia lähialueelta)
+  # --- Data stopped arriving (Data Consolidator down or no events nearby)
   - id: no_data
     type: missing_data
     max_gap_minutes: 10
     severity: high
     immediate: true
-    category: automaatio
-    message: "Kohteesta {source_id} ei ole saatu säädataa {gap_minutes} minuuttiin"
+    category: automation
+    message: "No weather data received from {source_id} for {gap_minutes} minutes"
