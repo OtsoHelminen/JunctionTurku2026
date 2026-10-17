@@ -35,7 +35,12 @@ log = logging.getLogger(__name__)
 _POSTCODE_RE = re.compile(r"^\d{5}\s+")
 
 # Consolidatorin ääri-ilmiöt mittareiksi: 0 = ei varoitusta, 1 = warning, 2 = severe.
-EXTREME_METRICS = {"flood": "flood_level", "forest_fire": "forest_fire_level"}
+EXTREME_METRICS = {
+    "flood": "flood_level",
+    "forest_fire": "forest_fire_level",
+    "frostbite": "frostbite_level",
+    "freezing_pipes": "freezing_pipes_level",
+}
 EXTREME_LEVELS = {"warning": 1.0, "severe": 2.0}
 # Kohteen tietokantarivin kentät, joista ei ole hyötyä agentille.
 _ESTATE_SKIP = {"id", "user_id", "latitude", "longitude", "created_at"}

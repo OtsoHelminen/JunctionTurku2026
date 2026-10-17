@@ -27,16 +27,16 @@ def house_events(house_id=1, address="Koivukuja 12, 00930 Helsinki, Finland", **
 
 def test_health(client):
     body = client.get("/health").json()
-    assert body["status"] == "ok" and body["rules"] == 13
+    assert body["status"] == "ok" and body["rules"] == 17
 
 
 def test_input_single_and_batch(client):
     r = client.post("/input", json=house_events())
-    assert r.status_code == 202 and r.json()["accepted_readings"] == 9
+    assert r.status_code == 202 and r.json()["accepted_readings"] == 11
 
     batch = [house_events(1), {"house": {"id": 2, "address": "Testitie 1, 02100 Espoo, Finland"}, "data_events": []}]
     r = client.post("/input", json=batch)
-    assert r.json() == {"accepted_readings": 9, "houses_without_events": 1}
+    assert r.json() == {"accepted_readings": 11, "houses_without_events": 1}
 
 
 def test_input_validation(client):

@@ -227,6 +227,58 @@ playbooks:
       - Follow the rescue authorities' bulletins and prepare to evacuate
       - Close windows, vents and ventilation in case of smoke
       - Water the area around the building if it is safe to do so
+  freezing_pipes_warning:
+    category: plumbing
+    expert:  # example, not a registered partner
+      profession: Plumber
+      example_name: Example Plumbing Ltd
+      reason: Water pipes in cold spaces may freeze
+      price_min_eur: 150
+      price_max_eur: 500
+      price_basis: Pipe insulation check and heating cable inspection
+    actions:
+      - Keep the heating on in all spaces, including the basement and crawl space
+      - Insulate pipes in cold spaces or install heating cables
+      - Leave a tap dripping slightly in the coldest part of the house
+  freezing_pipes_severe:
+    category: plumbing
+    expert:  # example, not a registered partner
+      profession: On-call plumber
+      example_name: Example Plumbing Ltd
+      reason: Hard frost can freeze and burst water pipes
+      price_min_eur: 300
+      price_max_eur: 1500
+      price_basis: Thawing frozen pipes or emergency repair, incl. on-call surcharge
+    actions:
+      - Check that water comes from every tap; if not, close the main valve
+      - Do not thaw pipes with an open flame
+      - Call an on-call plumber if a pipe has frozen or leaks
+  frostbite_warning:
+    category: plumbing
+    expert:  # example, not a registered partner
+      profession: Heating technician
+      example_name: Example Heating Services Ltd
+      reason: The heating system must cope with severe cold
+      price_min_eur: 100
+      price_max_eur: 400
+      price_basis: Heating system check and adjustment
+    actions:
+      - Limit time outdoors and dress in layers, covering face and hands
+      - Make sure the heating works and keep doors and windows closed
+      - Check on elderly neighbours and bring pets indoors
+  frostbite_severe:
+    category: plumbing
+    expert:  # example, not a registered partner
+      profession: On-call heating technician
+      example_name: Example Heating Services Ltd
+      reason: A heating failure in extreme cold is dangerous
+      price_min_eur: 300
+      price_max_eur: 1200
+      price_basis: Emergency heating repair, incl. on-call surcharge
+    actions:
+      - Avoid going outdoors; exposed skin can freeze within minutes
+      - Make sure the heating works and have a backup heat source ready
+      - Call an on-call heating technician immediately if the heating fails
   no_data:
     category: automation
     expert:  # example, not a registered partner

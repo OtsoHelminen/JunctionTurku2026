@@ -359,10 +359,19 @@ Samaan ryhmään kuuluvat säännöt tuottavat yhden hälytyksen, jonka vakavuus
 | | `flood_severe` | consolidatorin vakava tulvavaroitus | critical |
 | forest_fire | `forest_fire_warning` | consolidatorin maastopalovaroitus | high |
 | | `forest_fire_severe` | consolidatorin vakava maastopalovaroitus | critical |
+| freezing_pipes | `freezing_pipes_warning` | consolidatorin putkien jäätymisvaroitus | high |
+| | `freezing_pipes_severe` | consolidatorin vakava putkien jäätymisvaroitus | critical |
+| frostbite | `frostbite_warning` | consolidatorin paleltumavaroitus | high |
+| | `frostbite_severe` | consolidatorin vakava paleltumavaroitus | critical |
 | – | `rain_accumulation` | sade lähipäivinä yhteensä ≥ 30 mm | medium |
 | – | `no_data` | kohteesta ei dataa 10 minuuttiin | high |
 
-Kriittiset säännöt ja consolidatorin varoitukset arvioidaan minuutin välein, muut tasatunnein.
+Kriittiset säännöt, `hard_frost` ja consolidatorin varoitukset arvioidaan minuutin välein, muut tasatunnein.
+Demossa kaikki säännöt saa arvioitumaan minuutin välein asetuksella `EVALUATION_INTERVAL_MINUTES=1`.
+
+Consolidatorin simuloinneilla on omat viiveensä: myrsky näkyy heti, pakkasen paleltumavaroitus
+5 minuutin ja putkien jäätymisvaroitus 15 minuutin jälkeen, metsäpalovaroitus vasta 30 kuivan
+minuutin jälkeen. Logical Unit havaitsee varoituksen noin minuutissa sen ilmestymisestä.
 Raja-arvot ovat tiedostossa `config/rules.yaml`.
 
 ## Testaus

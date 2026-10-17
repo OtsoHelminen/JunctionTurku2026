@@ -49,6 +49,8 @@ def test_event_metrics():
         "temp_forecast_min_c": -0.5,
         "flood_level": 1.0,
         "forest_fire_level": 0.0,
+        "frostbite_level": 0.0,
+        "freezing_pipes_level": 0.0,
     }
 
 
@@ -65,7 +67,7 @@ def test_ingest_uses_event_timestamps_and_window(settings):
     timestamps = [r[0] for r in conn.execute("SELECT DISTINCT ts FROM readings ORDER BY ts")]
     estate = repo.get_estate(conn, "house-1")
     conn.close()
-    assert stored == 60 * 9
+    assert stored == 60 * 11
     assert timestamps == [T0 + m * 60 for m in range(10, 70)]
     assert source["source_id"] == "house-1" and source["area"] == "Helsinki"
     assert source["last_seen"] == T0 + 69 * 60
@@ -76,9 +78,29 @@ def test_ingest_accepts_consolidator_clock_running_ahead(settings, rules):
     # Jokainen /app/simulate/* siirtää consolidatorin kelloa minuutin edelle.
     now = T0 + 20 * 60
     with session(settings.db_path) as conn:
-        assert ingest(conn, house_events(range(10, 31)), now, settings) == 21 * 9
+        assert ingest(conn, house_events(range(10, 31)), now, settings) == 21 * 11
     events = minute_tick(settings, rules, now)
     assert {e["alert"]["rule_id"] for e in events} == {"flood_warning"}
+
+
+def test_consolidator_frost_extremes_alert_immediately(settings, rules):
+    frost = [{"type": "freezing_pipes", "severity": "severe"}, {"type": "frostbite", "severity": "warning"}]
+    with session(settings.db_path) as conn:
+        ingest(conn, house_events(range(0, 3), extremes=frost), T0 + 2 * 60, settings)
+    events = minute_tick(settings, rules, T0 + 2 * 60)
+    created = {e["alert"]["rule_id"] for e in events if e["event_type"] == "created"}
+    assert {"freezing_pipes_severe", "frostbite_warning"} <= created
+
+
+def test_simulated_extreme_is_caught_after_weather_returns_to_normal(settings, rules):
+    # Consolidatorin simulointi kirjoittaa ääri-ilmiön historiaan kerralla, ja seuraava
+    # minuutti on jo normaali. Hälytys syntyy silti, vaikka uusin arvo on normaali.
+    storm = [{"type": "flood", "severity": "severe"}]
+    with session(settings.db_path) as conn:
+        ingest(conn, house_events(range(0, 10), extremes=storm), T0 + 9 * 60, settings)
+        ingest(conn, house_events(range(10, 12), extremes=[]), T0 + 11 * 60, settings)
+    events = minute_tick(settings, rules, T0 + 11 * 60)
+    assert "flood_severe" in {e["alert"]["rule_id"] for e in events if e["event_type"] == "created"}
 
 
 def test_ingest_without_valid_events_stores_nothing(settings):
@@ -97,9 +119,9 @@ def test_consolidator_extremes_alert_escalate_and_clear(settings, rules):
     created = {(e["event_type"], e["alert"]["rule_id"]) for e in events}
     assert {("created", "flood_severe"), ("created", "forest_fire_warning")} <= created
 
-    with session(settings.db_path) as conn:
-        ingest(conn, house_events(range(8, 15), extremes=[]), T0 + 14 * 60, settings)
-    events = evaluate_all(settings, rules, T0 + 14 * 60, full=True)
+    with session(settings.db_path) as conn:  # max 10 min ikkunassa: kuittautuu 10 min jälkeen
+        ingest(conn, house_events(range(8, 19), extremes=[]), T0 + 18 * 60, settings)
+    events = evaluate_all(settings, rules, T0 + 18 * 60, full=True)
     resolved = {e["alert"]["rule_id"] for e in events if e["event_type"] == "resolved"}
     assert {"flood_severe", "forest_fire_warning"} <= resolved
 
