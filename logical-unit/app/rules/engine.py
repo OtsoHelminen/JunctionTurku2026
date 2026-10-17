@@ -247,7 +247,7 @@ def load_rules(path: str | Path) -> list[Rule]:
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
     raw_rules = data.get("rules")
     if not isinstance(raw_rules, list) or not raw_rules:
-        raise RuleConfigError(f"{path}: 'rules'-listaa ei löytynyt tai se on tyhjä")
+        raise RuleConfigError(f"{path}: 'rules' list is missing or empty")
     rules: list[Rule] = []
     seen: set[str] = set()
     for index, raw in enumerate(raw_rules, start=1):
@@ -255,9 +255,9 @@ def load_rules(path: str | Path) -> list[Rule]:
         try:
             rule = parse_rule(raw)
         except (RuleConfigError, TypeError, ValueError) as exc:
-            raise RuleConfigError(f"Sääntö #{index} ({label or '?'}): {exc}") from exc
+            raise RuleConfigError(f"Rule #{index} ({label or '?'}): {exc}") from exc
         if rule.id in seen:
-            raise RuleConfigError(f"Sääntö #{index}: id '{rule.id}' on jo käytössä")
+            raise RuleConfigError(f"Rule #{index}: id '{rule.id}' is already in use")
         seen.add(rule.id)
         rules.append(rule)
     return rules
@@ -265,31 +265,31 @@ def load_rules(path: str | Path) -> list[Rule]:
 
 def parse_rule(raw: dict[str, Any]) -> Rule:
     if not isinstance(raw, dict):
-        raise RuleConfigError("säännön pitää olla avain-arvo-rakenne")
+        raise RuleConfigError("a rule must be a key-value mapping")
     for key in ("id", "type", "severity", "message"):
         if not raw.get(key):
-            raise RuleConfigError(f"kenttä '{key}' puuttuu")
+            raise RuleConfigError(f"field '{key}' is missing")
     rule_type = raw["type"]
     if rule_type not in EVALUATORS:
-        raise RuleConfigError(f"tuntematon tyyppi '{rule_type}', sallitut: {sorted(EVALUATORS)}")
+        raise RuleConfigError(f"unknown type '{rule_type}', allowed: {sorted(EVALUATORS)}")
     if raw["severity"] not in SEVERITY_ORDER:
-        raise RuleConfigError(f"tuntematon severity '{raw['severity']}', sallitut: {list(SEVERITY_ORDER)}")
+        raise RuleConfigError(f"unknown severity '{raw['severity']}', allowed: {list(SEVERITY_ORDER)}")
 
     metric = raw.get("metric")
     if rule_type == "missing_data":
         if metric:
-            raise RuleConfigError("missing_data koskee koko lähdettä, poista 'metric'")
+            raise RuleConfigError("missing_data applies to the whole source, remove 'metric'")
     elif not metric:
-        raise RuleConfigError("kenttä 'metric' puuttuu")
+        raise RuleConfigError("field 'metric' is missing")
 
     params = {k: v for k, v in raw.items() if k not in TOP_LEVEL_KEYS}
     allowed = set(DEFAULTS[rule_type]) | set(REQUIRED[rule_type])
     unknown = set(params) - allowed
     if unknown:
-        raise RuleConfigError(f"tuntemattomat parametrit {sorted(unknown)}, sallitut: {sorted(allowed)}")
+        raise RuleConfigError(f"unknown parameters {sorted(unknown)}, allowed: {sorted(allowed)}")
     missing = [k for k in REQUIRED[rule_type] if k not in params]
     if missing:
-        raise RuleConfigError(f"pakolliset parametrit puuttuvat: {missing}")
+        raise RuleConfigError(f"required parameters missing: {missing}")
     params = {**DEFAULTS[rule_type], **params}
     _validate_params(rule_type, params)
 
@@ -312,31 +312,31 @@ def parse_rule(raw: dict[str, Any]) -> Rule:
 
 def _validate_params(rule_type: str, p: dict[str, Any]) -> None:
     if "op" in p and p["op"] not in OPERATORS:
-        raise RuleConfigError(f"op '{p['op']}' ei kelpaa, sallitut: {list(OPERATORS)}")
+        raise RuleConfigError(f"op '{p['op']}' is not valid, allowed: {list(OPERATORS)}")
     if "aggregate" in p and p["aggregate"] not in AGGREGATES:
-        raise RuleConfigError(f"aggregate '{p['aggregate']}' ei kelpaa, sallitut: {list(AGGREGATES)}")
+        raise RuleConfigError(f"aggregate '{p['aggregate']}' is not valid, allowed: {list(AGGREGATES)}")
     if "direction" in p and p["direction"] not in ("down", "up", "any"):
-        raise RuleConfigError("direction pitää olla down, up tai any")
+        raise RuleConfigError("direction must be down, up or any")
     for key in ("value", "pct", "tolerance", "min_coverage", "max_gap_minutes"):
         if key in p and (isinstance(p[key], bool) or not isinstance(p[key], (int, float))):
-            raise RuleConfigError(f"'{key}' pitää olla numero")
+            raise RuleConfigError(f"'{key}' must be a number")
     for key in ("window_minutes", "compare_minutes", "min_points", "interval_seconds"):
         if key in p and (isinstance(p[key], bool) or not isinstance(p[key], int) or p[key] <= 0):
-            raise RuleConfigError(f"'{key}' pitää olla positiivinen kokonaisluku")
+            raise RuleConfigError(f"'{key}' must be a positive integer")
     if rule_type == "change":
         if p["pct"] <= 0:
-            raise RuleConfigError("'pct' pitää olla positiivinen (suunta annetaan direction-kentällä)")
+            raise RuleConfigError("'pct' must be positive (set the direction with the direction field)")
         if p["compare_minutes"] * 2 > p["window_minutes"]:
-            raise RuleConfigError("compare_minutes saa olla enintään puolet window_minutes-arvosta")
+            raise RuleConfigError("compare_minutes must be at most half of window_minutes")
     if not 0 < p.get("min_coverage", 1) <= 1:
-        raise RuleConfigError("min_coverage pitää olla välillä 0–1")
+        raise RuleConfigError("min_coverage must be between 0 and 1")
 
 
 def validate_against_retention(rules: list[Rule], retention_minutes: int) -> None:
     too_long = [r.id for r in rules if r.history_minutes > retention_minutes]
     if too_long:
         raise RuleConfigError(
-            f"Säännöt {too_long} tarvitsevat pidemmän historian kuin RETENTION_MINUTES={retention_minutes}"
+            f"Rules {too_long} need a longer history than RETENTION_MINUTES={retention_minutes}"
         )
 
 

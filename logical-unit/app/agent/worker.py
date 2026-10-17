@@ -33,7 +33,7 @@ def process_pending(settings: Settings, client: ChatClient | None, now: int | No
                 except Exception as exc:  # verkko, aikakatkaisu, kelvoton vastaus...
                     with transaction(conn):
                         attempts = repo.register_analysis_failure(conn, row["id"], ts)
-                    log.warning("analyysi epäonnistui (hälytys %s, yritys %d): %s", row["id"], attempts, exc)
+                    log.warning("analysis failed (alert %s, attempt %d): %s", row["id"], attempts, exc)
                     if attempts < settings.agent_max_attempts:
                         continue
                     analysis = fallback_analysis(conn, row, ts, f"agent_failed: {type(exc).__name__}")
@@ -52,7 +52,7 @@ async def run_agent_worker(settings: Settings, client: ChatClient | None, stop: 
         try:
             processed = await asyncio.to_thread(process_pending, settings, client)
         except Exception:
-            log.exception("analyysityö epäonnistui")
+            log.exception("analysis job failed")
         try:
             await asyncio.wait_for(stop.wait(), timeout=1 if processed else 5)
         except asyncio.TimeoutError:

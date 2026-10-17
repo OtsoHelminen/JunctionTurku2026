@@ -39,7 +39,7 @@ def receive_input(request: Request, body: HouseEvents | list[HouseEvents] = Body
     settings = _settings(request)
     payloads = body if isinstance(body, list) else [body]
     if len(payloads) > MAX_BATCH:
-        raise HTTPException(413, f"enintään {MAX_BATCH} kohdetta kerralla")
+        raise HTTPException(413, f"at most {MAX_BATCH} houses per request")
     now = int(time.time())
     with session(settings.db_path) as conn:  # koko erä yhtenä transaktiona
         accepted = sum(ingest(conn, payload, now, settings) for payload in payloads)
@@ -89,7 +89,7 @@ def get_alert(request: Request, alert_id: int) -> dict[str, Any]:
     finally:
         conn.close()
     if row is None:
-        raise HTTPException(404, "hälytystä ei löydy")
+        raise HTTPException(404, "alert not found")
     return alert_to_dict(row)
 
 

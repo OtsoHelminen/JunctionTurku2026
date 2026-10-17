@@ -38,8 +38,8 @@ Lähetettävä runko (consolidatorin `NotificationPayload`):
 
 ```json
 {
-  "title": "Kriittinen hälytys – Helsinki",
-  "body": "Kova myrsky kohteessa house-1: tuuli 24.5 m/s",
+  "title": "Critical alert – Helsinki",
+  "body": "Severe storm at house-1: wind 24.5 m/s",
   "sound": "default",
   "data": {
     "kind": "alert",
@@ -52,9 +52,9 @@ Lähetettävä runko (consolidatorin `NotificationPayload`):
     "house_id": 1,
     "area": "Helsinki",
     "severity": "critical",
-    "category": "katto",
+    "category": "roof",
     "status": "active",
-    "message": "Kova myrsky kohteessa house-1: tuuli 24.5 m/s",
+    "message": "Severe storm at house-1: wind 24.5 m/s",
     "recommendation": null,
     "urgency": null,
     "expert": null,
@@ -76,12 +76,12 @@ sama `alert_id`, joten App voi päivittää olemassa olevaa hälytystä uuden lu
 
 | `data.event_type` | Otsikko | Runko |
 |---|---|---|
-| `created` | `<Vakavuus> hälytys – <alue>` | hälytyksen viesti |
-| `escalated` | `Hälytys paheni: <Vakavuus> – <alue>` | hälytyksen viesti |
-| `analyzed` | `Toimenpidesuositus – <alue>` | Qwenin tai pelikirjan suositus (myös `data.recommendation`) ja rivi `Suggested expert: <ammatti>, approx. <min>–<max> €` |
-| `resolved` | `Tilanne ohi – <alue>` | hälytyksen viesti, ei ääntä |
+| `created` | `<Severity> alert – <alue>` | hälytyksen viesti |
+| `escalated` | `Alert escalated: <Severity> – <alue>` | hälytyksen viesti |
+| `analyzed` | `Recommended action – <alue>` | Qwenin tai pelikirjan suositus (myös `data.recommendation`) ja rivi `Suggested expert: <ammatti>, approx. <min>–<max> €` |
+| `resolved` | `All clear – <alue>` | hälytyksen viesti, ei ääntä |
 
-Vakavuus suomeksi: Tiedote, Vähäinen, Kohtalainen, Vakava, Kriittinen.
+Vakavuus otsikossa: Info, Low, Medium, High, Critical. Kaikki ilmoitusten tekstit ovat englanniksi.
 
 **Toimitusvarmuus:** lähettäjä etenee hälytysvirtaa (`alert_events`) kursorilla, joka tallentuu
 kantaan. Jos consolidator ei vastaa, ilmoitus yritetään uudelleen, eikä mitään katoa. Pysyvästi
@@ -236,9 +236,9 @@ curl -X POST localhost:8001/admin/evaluate
   "source_id": "house-1",
   "area": "Helsinki",
   "severity": "critical",
-  "category": "kosteus",
+  "category": "moisture",
   "status": "active",
-  "message": "Erittäin rankka sade kohteessa house-1: ennuste 30 mm tänään, tulvariski",
+  "message": "Very heavy rain at house-1: 30 mm forecast today, flood risk",
   "value": 30.0,
   "details": {"aggregate": "last", "op": ">=", "threshold": 25, "window_minutes": 5, "points": 5},
   "revision": 2,
@@ -262,10 +262,10 @@ curl -X POST localhost:8001/admin/evaluate
     ],
     "suggested_resolvers": [
       {
-        "id": 6, "name": "Salaojat ja Tulvasuojaus Esimerkki Oy", "category": "kosteus",
+        "id": 6, "name": "Example Drainage and Flood Protection Ltd", "category": "moisture",
         "areas": ["Helsinki", "Espoo", "Vantaa"], "on_call": true, "priority": 5,
         "notes": "On-call flood pumps and sandbags",
-        "phone": "+358 40 000 0007", "email": "salaoja@example.com"
+        "phone": "+358 40 000 0007", "email": "drainage@example.com"
       }
     ],
     "suggested_expert": {
@@ -292,9 +292,9 @@ curl -X POST localhost:8001/admin/evaluate
 | `source_id` | kohde muodossa `house-<id>`, jossa `<id>` on consolidatorin talon id |
 | `area` | kaupunki osoitteesta |
 | `severity` | `info`, `low`, `medium`, `high`, `critical` |
-| `category` | ratkaisijakategoria: `katto`, `kosteus`, `lvi`, `palo`, `automaatio` |
+| `category` | ratkaisijakategoria: `roof`, `moisture`, `plumbing`, `fire`, `automation` |
 | `status` | `active` tai `resolved` |
-| `message` | suomenkielinen kuvaus, valmis näytettäväksi |
+| `message` | englanninkielinen kuvaus, valmis näytettäväksi |
 | `value`, `details` | mitattu arvo ja säännön laskentatiedot; kuitatussa hälytyksessä `details.resolution_reason` (`condition_cleared` tai `rule_removed`) |
 | `revision` | kasvaa, kun vakavuus tai arvo muuttuu |
 | `first_seen` / `last_seen` | ensimmäinen ja viimeisin havainto |

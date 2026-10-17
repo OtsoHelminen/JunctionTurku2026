@@ -55,18 +55,18 @@ def first_active(settings):
 def test_agent_uses_tools_and_drops_hallucinated_resolvers(settings, rules):
     make_alert(settings, rules)
     conn = connect(settings.db_path)
-    katto_ids = [r["id"] for r in repo.find_resolvers(conn, "katto", "Helsinki")]
+    roof_ids = [r["id"] for r in repo.find_resolvers(conn, "roof", "Helsinki")]
     conn.close()
     client = ScriptedClient([
         tool_call("get_recent_readings", {"metric": "rain_today_mm", "minutes": 30}),
-        tool_call("find_resolvers", {"category": "katto"}),
-        final(suggested_resolver_ids=[katto_ids[0], 999], expert=EXPERT),
+        tool_call("find_resolvers", {"category": "roof"}),
+        final(suggested_resolver_ids=[roof_ids[0], 999], expert=EXPERT),
     ])
     process_pending(settings, client, now=T0 + 61 * 60, limit=1)
 
     analysis = first_active(settings)["heavy_rain"]["analysis"]
     assert analysis["status"] == "done" and analysis["source"] == "llm"
-    assert [r["id"] for r in analysis["suggested_resolvers"]] == [katto_ids[0]]
+    assert [r["id"] for r in analysis["suggested_resolvers"]] == [roof_ids[0]]
     assert analysis["suggested_resolvers"][0]["phone"]  # yhteystieto tulee kannasta
     assert analysis["dropped_resolver_ids"] == [999]
     tool_msgs = [m for m in client.calls[-1] if m["role"] == "tool"]
@@ -120,6 +120,6 @@ def test_disabled_agent_uses_playbook(settings, rules):
     process_pending(settings, None, now=T0 + 61 * 60, limit=10)
     analysis = first_active(settings)["heavy_rain"]["analysis"]
     assert analysis["status"] == "skipped" and analysis["reason"] == "agent_disabled"
-    assert analysis["suggested_resolvers"][0]["name"] == "Esimerkki Kattohuolto Oy"
+    assert analysis["suggested_resolvers"][0]["name"] == "Example Roof Maintenance Ltd"
     assert analysis["suggested_expert"]["source"] == "playbook"
     assert analysis["suggested_expert"]["price_estimate"]["max_eur"] == 400

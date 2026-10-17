@@ -62,10 +62,10 @@ def create_app() -> FastAPI:
             if settings.notify_enabled:
                 tasks.append(asyncio.create_task(run_notifier(settings, stop), name="notifier"))
         log.info(
-            "Logical Unit käynnissä: %d sääntöä, kanta %s, data %s, agentti %s",
+            "Logical Unit running: %d rules, db %s, data %s, agent %s",
             len(rules), settings.db_path,
-            settings.consolidator_url if settings.consolidator_enabled else "vain POST /input",
-            settings.llm_model if client else "pois päältä",
+            settings.consolidator_url if settings.consolidator_enabled else "POST /input only",
+            settings.llm_model if client else "disabled",
         )
         try:
             yield

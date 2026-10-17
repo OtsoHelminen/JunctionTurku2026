@@ -1,82 +1,82 @@
-# Ratkaisijat ja pelikirjat. Ladataan tietokantaan käynnistyksessä, jos taulu on tyhjä,
-# tai komennolla:  python -m app.seed config/resolvers.yaml
+# Resolvers and playbooks. Loaded into the database at startup if the table is empty,
+# or with:  python -m app.seed config/resolvers.yaml
 #
-# HUOM: alla olevat yritykset ja yhteystiedot ovat KEKSITTYJÄ esimerkkejä.
-# Korvaa ne oikeilla kumppaneilla ennen tuotantokäyttöä.
+# NOTE: the companies and contact details below are FICTIONAL examples.
+# Replace them with real partners before production use.
 
 resolvers:
-  - name: Esimerkki Kattohuolto Oy
-    category: katto
+  - name: Example Roof Maintenance Ltd
+    category: roof
     areas: [Helsinki, Espoo]
     phone: "+358 40 000 0001"
-    email: katto@example.com
+    email: roof@example.com
     on_call: true
     priority: 10
     notes: 24/7 storm emergency service, contract customer
 
-  - name: Demo Peltikatot Oy
-    category: katto
+  - name: Demo Metal Roofs Ltd
+    category: roof
     areas: [Vantaa]
     phone: "+358 40 000 0002"
-    email: pelti@example.com
+    email: metalroof@example.com
     on_call: false
     priority: 20
 
-  - name: Varakatto Esimerkki Ky
-    category: katto
+  - name: Example Backup Roofing Ltd
+    category: roof
     areas: ["*"]
     phone: "+358 40 000 0003"
-    email: varakatto@example.com
+    email: backup-roof@example.com
     on_call: false
     priority: 50
     notes: Backup partner for the whole capital region, also clears fallen trees
 
-  - name: Kaupunki-LVI Esimerkki Oy
-    category: lvi
+  - name: Example City Plumbing Ltd
+    category: plumbing
     areas: ["*"]
     phone: "+358 40 000 0004"
-    email: lvi@example.com
+    email: plumbing@example.com
     on_call: true
     priority: 10
 
-  - name: Kosteuskartoitus Demo Oy
-    category: kosteus
+  - name: Demo Moisture Surveys Ltd
+    category: moisture
     areas: ["*"]
     phone: "+358 40 000 0005"
-    email: kosteus@example.com
+    email: moisture@example.com
     on_call: false
     priority: 10
 
-  - name: Salaojat ja Tulvasuojaus Esimerkki Oy
-    category: kosteus
+  - name: Example Drainage and Flood Protection Ltd
+    category: moisture
     areas: [Helsinki, Espoo, Vantaa]
     phone: "+358 40 000 0007"
-    email: salaoja@example.com
+    email: drainage@example.com
     on_call: true
     priority: 5
     notes: On-call flood pumps and sandbags
 
-  - name: Paloturva Esimerkki Oy
-    category: palo
+  - name: Example Fire Safety Services Ltd
+    category: fire
     areas: ["*"]
     phone: "+358 40 000 0008"
-    email: palo@example.com
+    email: fire@example.com
     on_call: true
     priority: 10
     notes: Spark protection, sprinkler systems and fire safety inspections
 
-  - name: Automaatiohuolto Esimerkki Oy
-    category: automaatio
+  - name: Example Automation Maintenance Ltd
+    category: automation
     areas: ["*"]
     phone: "+358 40 000 0006"
-    email: automaatio@example.com
+    email: automation@example.com
     on_call: true
     priority: 10
 
 playbooks:
   heavy_rain:
-    category: katto
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: roof
+    expert:  # example, not a registered partner
       profession: Roofer
       example_name: Example Roofing Ltd
       reason: Gutter cleaning and roof penetration check
@@ -88,8 +88,8 @@ playbooks:
       - Make sure rainwater drains away from the foundation
       - After the rain, check the attic and roof penetrations for moisture
   extreme_rain:
-    category: kosteus
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: moisture
+    expert:  # example, not a registered partner
       profession: Drainage and flood protection specialist
       example_name: Example Drainage Services Ltd
       reason: Drainage wells and flood pump need checking before heavy rain
@@ -101,8 +101,8 @@ playbooks:
       - Check the drainage wells and that the flood pump (if any) works
       - Order on-call flood protection if needed
   rain_accumulation:
-    category: kosteus
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: moisture
+    expert:  # example, not a registered partner
       profession: Drainage specialist
       example_name: Example Drainage Services Ltd
       reason: Drains must cope with several days of rain
@@ -113,8 +113,8 @@ playbooks:
       - Check that the drains and stormwater wells flow freely
       - Monitor moisture in the basement and base floor after the rains
   storm_forecast:
-    category: katto
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: roof
+    expert:  # example, not a registered partner
       profession: Roofer
       example_name: Example Roofing Ltd
       reason: Roof sheets and flashings may come loose in strong wind
@@ -126,8 +126,8 @@ playbooks:
       - Check the fastenings of roof sheets, chimney flashings and antennas
       - Assess the condition of yard trees and their risk of falling
   storm_wind:
-    category: katto
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: roof
+    expert:  # example, not a registered partner
       profession: Roofer
       example_name: Example Roofing Ltd
       reason: Storm damage to the roof and gutters
@@ -138,8 +138,8 @@ playbooks:
       - Secure loose items and close windows and ventilation hatches
       - After the storm, check the roof, gutters and yard trees
   severe_storm:
-    category: katto
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: roof
+    expert:  # example, not a registered partner
       profession: On-call roofer
       example_name: Example Emergency Roofing Ltd
       reason: Severe storm may damage the roofing and let water in
@@ -151,8 +151,8 @@ playbooks:
       - After the storm, photograph any damage for insurance
       - Order an on-call roofer if the roofing is damaged
   frost_forecast:
-    category: lvi
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: plumbing
+    expert:  # example, not a registered partner
       profession: Plumber
       example_name: Example Plumbing Ltd
       reason: Outdoor taps and unprotected pipes may freeze
@@ -163,8 +163,8 @@ playbooks:
       - Drain and shut off outdoor taps and irrigation systems
       - Make sure the heating works and that no water pipes in cold spaces are unprotected
   hard_frost:
-    category: lvi
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: plumbing
+    expert:  # example, not a registered partner
       profession: On-call plumber
       example_name: Example Plumbing Ltd
       reason: Hard frost can freeze and burst water pipes
@@ -176,8 +176,8 @@ playbooks:
       - Insulate or heat pipes at risk of freezing (heating cables)
       - If no water comes from the tap, close the main valve and call a plumber
   flood_warning:
-    category: kosteus
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: moisture
+    expert:  # example, not a registered partner
       profession: Flood protection specialist
       example_name: Example Flood Protection Ltd
       reason: Basement and ground-level rooms are at risk of flooding
@@ -189,8 +189,8 @@ playbooks:
       - Check the drainage wells, stormwater wells and that the flood pump works
       - Follow the authorities' flood bulletins
   flood_severe:
-    category: kosteus
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: moisture
+    expert:  # example, not a registered partner
       profession: On-call flood protection specialist
       example_name: Example Flood Protection Ltd
       reason: Severe flood risk to the basement and foundation
@@ -202,8 +202,8 @@ playbooks:
       - Cut the power to rooms where water may rise
       - Order on-call flood protection and follow the rescue authorities' instructions
   forest_fire_warning:
-    category: palo
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: fire
+    expert:  # example, not a registered partner
       profession: Fire safety inspector
       example_name: Example Fire Safety Ltd
       reason: Dry debris near the building increases fire risk
@@ -215,8 +215,8 @@ playbooks:
       - Remove dry leaves and twigs from the roof, gutters and along the walls
       - Make sure the garden hose reaches all around the building
   forest_fire_severe:
-    category: palo
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: fire
+    expert:  # example, not a registered partner
       profession: Fire safety contractor
       example_name: Example Fire Safety Ltd
       reason: Wildfire may spread to the property
@@ -228,8 +228,8 @@ playbooks:
       - Close windows, vents and ventilation in case of smoke
       - Water the area around the building if it is safe to do so
   no_data:
-    category: automaatio
-    expert:  # esimerkki, ei rekisteröity kumppani
+    category: automation
+    expert:  # example, not a registered partner
       profession: Building automation technician
       example_name: Example Automation Services Ltd
       reason: Data from the property has stopped

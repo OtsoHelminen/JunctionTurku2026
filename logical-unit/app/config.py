@@ -58,7 +58,8 @@ def load_settings() -> Settings:
         tick_seconds=int(os.getenv("TICK_SECONDS", "60")),
         renotify_hours=float(os.getenv("RENOTIFY_HOURS", "6")),
         change_threshold_pct=float(os.getenv("CHANGE_THRESHOLD_PCT", "10")),
-        max_future_skew_seconds=int(os.getenv("MAX_FUTURE_SKEW_SECONDS", "300")),
+        # Consolidatorin simulaatiokello karkaa edelle: jokainen /app/simulate/* lisää tapahtuman heti.
+        max_future_skew_seconds=int(os.getenv("MAX_FUTURE_SKEW_SECONDS", "3600")),
         consolidator_enabled=_env_bool("CONSOLIDATOR_ENABLED", True),
         consolidator_url=os.getenv("CONSOLIDATOR_URL", "http://localhost:8008"),
         consolidator_timeout_seconds=float(os.getenv("CONSOLIDATOR_TIMEOUT_SECONDS", "10")),

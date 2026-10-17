@@ -64,13 +64,13 @@ def minute_tick(settings: Settings, rules: list[Rule], now: int) -> list[dict[st
     deleted = purge(settings, now)
     events = evaluate_all(settings, rules, now, full=False)
     if deleted or events:
-        log.info("minuuttiajo: poistettu %d lukemaa, %d tapahtumaa", deleted, len(events))
+        log.info("minute tick: purged %d readings, %d events", deleted, len(events))
     return events
 
 
 def hourly_evaluation(settings: Settings, rules: list[Rule], now: int) -> list[dict[str, Any]]:
     events = evaluate_all(settings, rules, now, full=True)
-    log.info("täysi arviointi: %d tapahtumaa", len(events))
+    log.info("full evaluation: %d events", len(events))
     for event in events:
         alert = event["alert"]
         log.info("  %s %s [%s] %s", event["event_type"], alert["fingerprint"], alert["severity"], alert["message"])
@@ -85,7 +85,7 @@ def next_boundary(now: int, interval_seconds: int) -> int:
 async def run_scheduler(settings: Settings, rules: list[Rule], stop: asyncio.Event) -> None:
     interval = settings.evaluation_interval_minutes * 60
     next_eval = next_boundary(int(time.time()), interval)
-    log.info("ajastin käynnissä, seuraava täysi arviointi %s", time.strftime("%H:%M:%S", time.localtime(next_eval)))
+    log.info("scheduler running, next full evaluation %s", time.strftime("%H:%M:%S", time.localtime(next_eval)))
     while not stop.is_set():
         now = int(time.time())
         try:
@@ -94,7 +94,7 @@ async def run_scheduler(settings: Settings, rules: list[Rule], stop: asyncio.Eve
                 await asyncio.to_thread(hourly_evaluation, settings, rules, now)
                 next_eval = next_boundary(now, interval)
         except Exception:  # ajastin ei saa kaatua yksittäiseen virheeseen
-            log.exception("ajastettu työ epäonnistui")
+            log.exception("scheduled job failed")
         try:
             await asyncio.wait_for(stop.wait(), timeout=settings.tick_seconds)
         except asyncio.TimeoutError:

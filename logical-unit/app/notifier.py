@@ -24,16 +24,16 @@ from .db import connect, transaction
 
 log = logging.getLogger(__name__)
 
-SEVERITY_FI = {
-    "info": "Tiedote", "low": "Vähäinen", "medium": "Kohtalainen", "high": "Vakava", "critical": "Kriittinen",
+SEVERITY_LABELS = {
+    "info": "Info", "low": "Low", "medium": "Medium", "high": "High", "critical": "Critical",
 }
 TITLES = {
-    "created": "{severity} hälytys – {area}",
-    "escalated": "Hälytys paheni: {severity} – {area}",
-    "changed": "Hälytys muuttui – {area}",
-    "reminder": "Muistutus: hälytys jatkuu – {area}",
-    "resolved": "Tilanne ohi – {area}",
-    "analyzed": "Toimenpidesuositus – {area}",
+    "created": "{severity} alert – {area}",
+    "escalated": "Alert escalated: {severity} – {area}",
+    "changed": "Alert changed – {area}",
+    "reminder": "Reminder: alert ongoing – {area}",
+    "resolved": "All clear – {area}",
+    "analyzed": "Recommended action – {area}",
 }
 
 
@@ -42,8 +42,8 @@ def build_notification(event: dict[str, Any]) -> dict[str, Any]:
     alert = event["alert"]
     analysis = alert.get("analysis") or {}
     event_type = event["event_type"]
-    title = TITLES.get(event_type, "Hälytys – {area}").format(
-        severity=SEVERITY_FI.get(alert["severity"], alert["severity"]),
+    title = TITLES.get(event_type, "Alert – {area}").format(
+        severity=SEVERITY_LABELS.get(alert["severity"], alert["severity"]),
         area=alert.get("area") or alert["source_id"],
     )
     expert = analysis.get("suggested_expert") or None
@@ -132,26 +132,26 @@ class Notifier:
             attempts = self._failures.get(event_id, 0) + 1
             self._failures[event_id] = attempts
             if attempts < self.settings.notify_max_attempts:
-                log.warning("ilmoitus %s epäonnistui (yritys %d): %s", event_id, attempts, exc)
+                log.warning("notification %s failed (attempt %d): %s", event_id, attempts, exc)
                 return False
-            log.error("ilmoitus %s ohitettiin %d yrityksen jälkeen: %s", event_id, attempts, exc)
+            log.error("notification %s skipped after %d attempts: %s", event_id, attempts, exc)
             self._failures.pop(event_id, None)
             return True  # ohitetaan, ettei jono tukkeudu
         self._failures.pop(event_id, None)
-        log.info("ilmoitus lähetetty: %s %s (%s laitteelle)",
+        log.info("notification sent: %s %s (%s devices)",
                  event["event_type"], event["alert"]["fingerprint"], response.json().get("sent"))
         return True
 
 
 async def run_notifier(settings: Settings, stop: asyncio.Event) -> None:
     notifier = Notifier(settings)
-    log.info("push-ilmoitukset: %s/app/notify, tapahtumat %s",
+    log.info("push notifications: %s/app/notify, events %s",
              settings.consolidator_url, ", ".join(sorted(settings.notify_events)))
     while not stop.is_set():
         try:
             await asyncio.to_thread(notifier.run_once)
         except Exception:
-            log.exception("ilmoitusten lähetys epäonnistui")
+            log.exception("sending notifications failed")
         try:
             await asyncio.wait_for(stop.wait(), timeout=settings.notify_seconds)
         except asyncio.TimeoutError:

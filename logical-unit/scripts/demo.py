@@ -65,7 +65,7 @@ def main() -> None:
         apply_seed(conn, load_seed_file(PROJECT_ROOT / "config" / "resolvers.yaml"))
     rules = load_rules(settings.rules_path)
 
-    print("Simuloidaan 4 h: normaali -> myrsky lähestyy (90 min) -> kova myrsky (185 min) -> tyyntyy (190 min)\n")
+    print("Simulating 4 h: normal -> storm approaching (90 min) -> severe storm (185 min) -> calming down (190 min)\n")
     timeline = []
     for minute in range(0, 241):
         now = T0 + minute * 60
@@ -76,7 +76,7 @@ def main() -> None:
             timeline += hourly_evaluation(settings, rules, now)
         process_pending(settings, None, now=now, limit=10)  # analyysi (tässä pelikirja, ei mallia)
 
-    print(f"{'aika (UTC)':<22}{'tapahtuma':<11}{'vakavuus':<10}viesti")
+    print(f"{'time (UTC)':<22}{'event':<11}{'severity':<10}message")
     for event in timeline:
         a = event["alert"]
         print(f"{event['created_at']:<22}{event['event_type']:<11}{a['severity']:<10}{a['message']}")
@@ -88,12 +88,12 @@ def main() -> None:
     summaries = repo.hourly_history(conn, SOURCE, "wind_today_m_s", 0)
     conn.close()
 
-    print("\nEsimerkki App:lle menevästä hälytys-JSONista (analyysin jälkeen):")
+    print("\nExample alert JSON sent to the App (after analysis):")
     print(json.dumps(json.loads(analyzed["payload"]), ensure_ascii=False, indent=2))
-    print("\nTuntikoosteet (tuuli m/s) säilyvät, vaikka raakadata poistetaan:")
+    print("\nHourly aggregates (wind m/s) are kept even after raw data is purged:")
     for row in summaries:
-        print(f"  {row['hour']}  min {row['min']:.2f}  max {row['max']:.2f}  avg {row['avg']:.2f}  ({row['count']} lukemaa)")
-    print(f"\nKanta: {settings.db_path}  (viimeisin hetki {iso(T0 + 240 * 60)})")
+        print(f"  {row['hour']}  min {row['min']:.2f}  max {row['max']:.2f}  avg {row['avg']:.2f}  ({row['count']} readings)")
+    print(f"\nDatabase: {settings.db_path}  (last timestamp {iso(T0 + 240 * 60)})")
 
 
 if __name__ == "__main__":

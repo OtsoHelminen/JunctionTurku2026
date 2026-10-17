@@ -1,4 +1,5 @@
 import copy
+from dataclasses import replace
 import json
 from pathlib import Path
 
@@ -52,6 +53,7 @@ def test_event_metrics():
 
 
 def test_ingest_uses_event_timestamps_and_window(settings):
+    settings = replace(settings, max_future_skew_seconds=300)
     now = T0 + 70 * 60
     # minuutit 0..9 ovat yli 60 min vanhoja, 80 on yli 5 min tulevaisuudessa -> ohitetaan
     payload = house_events([*range(0, 70), 80])
@@ -68,6 +70,15 @@ def test_ingest_uses_event_timestamps_and_window(settings):
     assert source["source_id"] == "house-1" and source["area"] == "Helsinki"
     assert source["last_seen"] == T0 + 69 * 60
     assert estate["construction_year"] == 1978 and "id" not in estate and "created_at" not in estate
+
+
+def test_ingest_accepts_consolidator_clock_running_ahead(settings, rules):
+    # Jokainen /app/simulate/* siirtää consolidatorin kelloa minuutin edelle.
+    now = T0 + 20 * 60
+    with session(settings.db_path) as conn:
+        assert ingest(conn, house_events(range(10, 31)), now, settings) == 21 * 9
+    events = minute_tick(settings, rules, now)
+    assert {e["alert"]["rule_id"] for e in events} == {"flood_warning"}
 
 
 def test_ingest_without_valid_events_stores_nothing(settings):
