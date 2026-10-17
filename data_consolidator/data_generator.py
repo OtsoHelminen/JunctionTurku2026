@@ -43,7 +43,9 @@ FIRE_MAX_RAIN_MM = 0.5       # "dry" day
 FIRE_DRY_TICKS = 30
 FIRE_SEVERE_TEMP_C = 27.0
 FIRE_CLEAR_TEMP_C = 19.0
-STORM_RAIN_MM = 30.0
+# very heavy rain: severe flood level from the first storm tick
+STORM_RAIN_MM = 35.0
+STORM_WIND_M_S = 21.0        # storm-force wind (FMI 'myrsky' starts at 21 m/s)
 RAIN_FRONT_CHANCE = 0.002     # per zone per tick: a slow heavy-rain front arrives
 RAIN_FRONT_TARGET_MM = 28.0
 DRY_SPELL_CHANCE = 0.003      # per zone per tick: a high-pressure dry spell sets in
@@ -143,11 +145,18 @@ class DataGenerator:
             self._house_history[house_id] = history
 
     def force_storm(self, events: int = 30) -> None:
-        """Storm lasts this many simulation ticks, independent of house count."""
+        """Start a storm over every zone in SOUTHERN_FINLAND_BOUNDS right now.
+
+        Lasts this many simulation ticks, independent of house count. The first
+        storm tick is generated immediately, so the API shows storm weather at
+        once instead of waiting for the next background tick (default 60 s).
+        """
         if isinstance(events, bool) or not isinstance(events, int) or events < 0:
             raise ValueError('events must be a non-negative integer')
         with self._lock:
             self._storm_remaining = events
+            if events:
+                self.generate_events()
 
     def _step(self, zone: dict[str, Any], storm: bool) -> None:
         r = self._rng
@@ -173,7 +182,7 @@ class DataGenerator:
                 d['rain'] = _clamp(
                     max(STORM_RAIN_MM, d['rain'] + r.uniform(3, 8)), *RAIN_BOUNDS)
                 d['wind'] = _clamp(
-                    max(17.0, d['wind'] + r.uniform(2, 5)), *WIND_BOUNDS)
+                    max(STORM_WIND_M_S, d['wind'] + r.uniform(1, 3)), *WIND_BOUNDS)
             else:
                 # Bounded, mean-reverting walks avoid remaining at storm maxima.
                 # Dry spells (high pressure) keep only light, mostly-drying noise.
