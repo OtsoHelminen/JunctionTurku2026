@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE = "http://localhost:8008"
+BASE = "http://localhost:8000"
 
 
 def call(method, path, body=None, params=None):
@@ -102,13 +102,30 @@ def register_device():
     call("POST", "/app/devices", body)
 
 
+def simulate_event():
+    print("\n  Simulate event:")
+    print("   1. Storm")
+    print("   2. Forest fire")
+    print("   3. Frost")
+    c = input("  > ").strip()
+    paths = {
+        "1": "/app/simulate/storm",
+        "2": "/app/simulate/forest_fire",
+        "3": "/app/simulate/frost",
+    }
+    if c in paths:
+        call("GET", paths[c])
+    else:
+        print("  Unknown choice.")
+
+
 MENU = [
     ("Get all weather events", lambda: call("GET", "/app/data_events")),
     ("Get events for a house", lambda: call(
         "GET", f"/app/data_events/{ask('house_id', int, True)}")),
     ("List houses", lambda: call("GET", "/app/houses")),
     ("Create house", create_house),
-    ("Simulate storm", lambda: call("GET", "/app/simulate/storm")),
+    ("Simulate event", simulate_event),
     ("Register device", register_device),
     ("List devices (all stored tokens)", lambda: call("GET", "/app/devices")),
     ("Unregister device", lambda: call("DELETE", "/app/devices",
