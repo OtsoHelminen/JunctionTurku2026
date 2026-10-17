@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import TabBar, { TabName } from './TabBar';
-import Home from '../pages/Home';
+import RealEstate from '../pages/RealEstate';
 import Info from '../pages/Info';
 import Check from '../pages/Check';
 import Profile from '../pages/Profile';
@@ -13,7 +13,7 @@ export default function Navigation() {
   const renderPage = () => {
     switch (activeTab) {
       case 'Home':
-        return <Home />;
+        return <RealEstate />;
       case 'Info':
         return <Info />;
       case 'Check':

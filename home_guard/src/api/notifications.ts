@@ -7,8 +7,7 @@ import {
 } from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-
-const API_URL = 'http://10.88.1.28:8008';
+import { API_URL } from './config';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -88,11 +87,35 @@ export async function registerForPush(): Promise<{ token: string | null; error?:
 export async function sendTestLocalNotification(): Promise<void> {
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Home Guard Alert 🔔',
-      body: 'Test notification delivered with sound and banner!',
+      title: 'Toimenpidesuositus – Helsinki',
+      body: 'Clean the gutters and downspouts before the rain\nSuggested expert: Roofer, approx. 150–400 €',
       sound: 'default',
       priority: AndroidNotificationPriority.MAX,
-      data: { id: 'test-123', type: 'alert' },
+      data: {
+        kind: 'alert',
+        event_id: 7,
+        event_type: 'analyzed',
+        alert_id: 3,
+        fingerprint: 'wind:house-1',
+        rule_id: 'severe_storm',
+        source_id: 'house-1',
+        house_id: 1,
+        area: 'Helsinki',
+        severity: 'critical',
+        category: 'katto',
+        status: 'active',
+        message: 'Kova myrsky kohteessa house-1: tuuli 24.5 m/s',
+        recommendation: 'Clean the gutters and downspouts before the rain',
+        urgency: 'today',
+        expert: {
+          registered: false,
+          profession: 'Roofer',
+          example_name: 'Example Roofing Ltd',
+          price_min_eur: 150,
+          price_max_eur: 400,
+        },
+        created_at: '2026-10-17T10:05:00Z',
+      },
     },
     trigger: null,
   });

@@ -22,7 +22,8 @@ FORECAST_DAYS = 3
 ZONE_SIZE_M = 100_000
 HOUSE_RADIUS_KM = 25.0
 # Configurable rectangular simulation extent, not a Finnish land-border mask.
-SOUTHERN_FINLAND_BOUNDS = (59.7, 61.8, 21.0, 29.5)
+# Covers the cities used by the mobile app's Finnish address suggestions.
+FINLAND_BOUNDS = (59.7, 66.7, 21.0, 29.5)
 WIND_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 TEMP_BOUNDS = (-30.0, 35.0)
 TEMP_STEP = 1.0
@@ -85,7 +86,7 @@ def _conditions(rain_mm: float, max_c: float) -> str:
 
 class DataGenerator:
     def __init__(self, seed: int | None = None, start_date: date | None = None,
-                 bounds: tuple[float, float, float, float] = SOUTHERN_FINLAND_BOUNDS) -> None:
+                 bounds: tuple[float, float, float, float] = FINLAND_BOUNDS) -> None:
         self._rng = random.Random(seed)
         self._house_seed = self._rng.getrandbits(128)
         self._house_rng: dict[int, random.Random] = {}
@@ -154,8 +155,8 @@ class DataGenerator:
                 history.append(self._house_event(house, frame))
             self._house_history[house_id] = history
 
-    def force_storm(self, events: int = 60) -> None:
-        """Start a storm over every zone in SOUTHERN_FINLAND_BOUNDS right now.
+    def force_storm(self, events: int = 30) -> None:
+        """Start a storm over every zone in the configured bounds right now.
 
         Lasts this many simulation ticks, independent of house count. The first
         storm tick is generated immediately, so the API shows storm weather at
