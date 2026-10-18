@@ -11,6 +11,7 @@ interface PropertySelectorProps {
   error: string;
   onSelect: (id: number) => void;
   onAdd: () => void;
+  onRetry: () => void;
 }
 
 export default function PropertySelector({
@@ -20,6 +21,7 @@ export default function PropertySelector({
   error,
   onSelect,
   onAdd,
+  onRetry,
 }: PropertySelectorProps) {
   const { colors } = useTheme();
 
@@ -93,7 +95,20 @@ export default function PropertySelector({
       {error ? (
         <View style={styles.errorRow}>
           <MaterialIcons name="error" size={20} color={colors.error} />
-          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+          <View style={styles.errorBody}>
+            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+            {!isLoading && (
+              <Pressable
+                style={styles.retryButton}
+                onPress={onRetry}
+                android_ripple={{ color: colors.accentSoft, borderless: true }}
+                accessibilityRole="button"
+                accessibilityLabel="Try loading properties again"
+              >
+                <Text style={[styles.retryText, { color: colors.accentText }]}>Try again</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       ) : null}
     </View>
@@ -144,8 +159,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
   },
-  errorText: {
+  errorBody: {
     flex: 1,
+    alignItems: 'flex-start',
+  },
+  retryButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  retryText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 15,
+  },
+  errorText: {
     fontFamily: FONTS.body,
     fontSize: 14,
     lineHeight: 19,

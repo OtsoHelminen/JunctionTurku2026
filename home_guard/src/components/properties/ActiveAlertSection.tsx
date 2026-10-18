@@ -121,7 +121,7 @@ export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) 
                     </View>
                   )}
                   <MaterialIcons
-                    name={isExpanded ? 'expand-less' : 'expand-more'}
+                    name={isExpanded ? 'expand-more' : 'chevron-right'}
                     size={24}
                     color={isFilled ? urgency.onFill : colors.muted}
                   />

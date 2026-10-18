@@ -8,6 +8,7 @@ import {
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { API_URL } from './config';
+import { fetchWithTimeout } from './http';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -65,7 +66,7 @@ export async function registerForPush(): Promise<{ token: string | null; error?:
 
     // Attempt to register device with backend API (fails gracefully if backend is offline)
     try {
-      await fetch(`${API_URL}/app/devices`, {
+      await fetchWithTimeout(`${API_URL}/app/devices`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, platform: Platform.OS }),
@@ -121,7 +122,7 @@ export async function sendTestLocalNotification(): Promise<void> {
 
 export async function unregisterPush(token: string) {
   try {
-    await fetch(`${API_URL}/app/devices?token=${encodeURIComponent(token)}`, {
+    await fetchWithTimeout(`${API_URL}/app/devices?token=${encodeURIComponent(token)}`, {
       method: 'DELETE',
     });
   } catch {

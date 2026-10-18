@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { createHouse, fetchHouses } from '../api/houses';
+import { isAbortError, RequestTimeoutError } from '../api/http';
 import AddPropertyModal from '../components/properties/AddPropertyModal';
 import OrderHelpSection from '../components/properties/OrderHelpSection';
 import PropertySelector from '../components/properties/PropertySelector';
@@ -17,13 +18,16 @@ export default function Properties() {
   const [properties, setProperties] = useState<PropertyEntry[]>([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(true);
   const [isCreatingProperty, setIsCreatingProperty] = useState(false);
-  const [propertyError, setPropertyError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [createError, setCreateError] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
   const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
   const [addressInput, setAddressInput] = useState('');
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [addressError, setAddressError] = useState('');
   const [previewCoordinates, setPreviewCoordinates] = useState<Coordinates | null>(null);
+  // Lets Cancel (or leaving the screen) stop a pending create request
+  const createAbortRef = useRef<AbortController | null>(null);
 
   const allAlerts = useAlertNotifications();
 
@@ -51,31 +55,45 @@ export default function Properties() {
         ).slice(0, 5)
       : [];
 
+  // Bumped by "Try again" to re-run the load effect
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
   useEffect(() => {
-    let isActive = true;
+    const controller = new AbortController();
 
     const loadHouses = async () => {
       try {
-        const houses = await fetchHouses();
-        if (!isActive) return;
+        const houses = await fetchHouses(controller.signal);
         const entries = houses.map(mapHouseToEntry);
         setProperties(entries);
-        setSelectedPropertyId(entries[0]?.id ?? null);
-        setPropertyError('');
+        setSelectedPropertyId((current) =>
+          entries.some((entry) => entry.id === current) ? current : (entries[0]?.id ?? null)
+        );
       } catch (error: unknown) {
-        if (!isActive) return;
+        if (isAbortError(error)) return; // screen left, nothing to show
         console.warn('Failed to load properties', error);
-        setPropertyError("Couldn't load properties. Check your connection and try again.");
+        setLoadError(
+          error instanceof RequestTimeoutError
+            ? "The server didn't respond. Check your connection and try again."
+            : "Couldn't load properties. Check your connection and try again."
+        );
       } finally {
-        if (isActive) setIsLoadingProperties(false);
+        if (!controller.signal.aborted) setIsLoadingProperties(false);
       }
     };
 
     void loadHouses();
-    return () => {
-      isActive = false;
-    };
-  }, []);
+    return () => controller.abort();
+  }, [loadAttempt]);
+
+  // Leaving the screen also cancels a pending create request
+  useEffect(() => () => createAbortRef.current?.abort(), []);
+
+  const retryLoadingHouses = () => {
+    setIsLoadingProperties(true);
+    setLoadError('');
+    setLoadAttempt((attempt) => attempt + 1);
+  };
 
   const handleAddProperty = async () => {
     const address = addressInput.trim();
@@ -84,29 +102,45 @@ export default function Properties() {
       return;
     }
 
+    const controller = new AbortController();
+    createAbortRef.current = controller;
     setIsCreatingProperty(true);
-    setPropertyError('');
+    setCreateError('');
     try {
       const coordinates = previewCoordinates ?? createRandomCoordinates(address);
-      const house = await createHouse({ address, ...coordinates });
+      const house = await createHouse({ address, ...coordinates }, controller.signal);
       const newProperty = mapHouseToEntry(house);
       setProperties((currentProperties) => [
         ...currentProperties.filter((current) => current.id !== newProperty.id),
         newProperty,
       ]);
       setSelectedPropertyId(newProperty.id);
-      handleCloseAddressModal();
+      resetAddressModal();
     } catch (error: unknown) {
+      if (isAbortError(error)) return; // cancelled by the user
       // Never show the raw exception to the user
       console.warn('Failed to create property', error);
-      setPropertyError("Couldn't create property. Check your connection and try again.");
+      setCreateError(
+        error instanceof RequestTimeoutError
+          ? "The server didn't respond. Check your connection and try again."
+          : "Couldn't create property. Check your connection and try again."
+      );
     } finally {
+      if (createAbortRef.current === controller) createAbortRef.current = null;
       setIsCreatingProperty(false);
     }
   };
 
+  // Cancel always works, even while a request is pending: it aborts the request
   const handleCloseAddressModal = () => {
-    if (isCreatingProperty) return;
+    createAbortRef.current?.abort();
+    createAbortRef.current = null;
+    setIsCreatingProperty(false);
+    setCreateError('');
+    resetAddressModal();
+  };
+
+  const resetAddressModal = () => {
     setAddressInput('');
     setShowAddressSuggestions(false);
     setAddressError('');
@@ -128,10 +162,11 @@ export default function Properties() {
           entries={properties}
           isLoading={isLoadingProperties}
           selectedId={selectedPropertyId}
-          error={propertyError}
+          error={loadError}
           onSelect={setSelectedPropertyId}
+          onRetry={retryLoadingHouses}
           onAdd={() => {
-            setPropertyError('');
+            setCreateError('');
             setIsAddressModalVisible(true);
           }}
         />
@@ -146,7 +181,7 @@ export default function Properties() {
         addressSuggestions={addressSuggestions}
         showAddressSuggestions={showAddressSuggestions}
         addressError={addressError}
-        propertyError={propertyError}
+        propertyError={createError}
         previewCoordinates={previewCoordinates}
         isCreating={isCreatingProperty}
         onClose={handleCloseAddressModal}

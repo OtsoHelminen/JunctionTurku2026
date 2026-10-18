@@ -79,7 +79,7 @@ export default function OrderHelpSection({ experts }: OrderHelpSectionProps) {
                 {price ? <Text style={[styles.meta, { color: colors.muted }]}>{price}</Text> : null}
               </View>
               <MaterialIcons
-                name={isExpanded ? 'expand-less' : 'expand-more'}
+                name={isExpanded ? 'expand-more' : 'chevron-right'}
                 size={24}
                 color={colors.muted}
               />

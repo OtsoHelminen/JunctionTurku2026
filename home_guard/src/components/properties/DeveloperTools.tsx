@@ -87,7 +87,7 @@ export default function DeveloperTools() {
         <MaterialIcons name="code" size={26} color={colors.text} />
         <Text style={[styles.developerToolsTitle, { color: colors.text }]}>Developer tools</Text>
         <MaterialIcons
-          name={isExpanded ? 'expand-less' : 'expand-more'}
+          name={isExpanded ? 'expand-more' : 'chevron-right'}
           size={24}
           color={colors.muted}
         />
