@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { createHouse, fetchHouses } from '../api/houses';
 import AddPropertyModal from '../components/properties/AddPropertyModal';
-import DeveloperTools from '../components/properties/DeveloperTools';
 import OrderHelpSection from '../components/properties/OrderHelpSection';
 import PropertySelector from '../components/properties/PropertySelector';
 import ActiveAlertSection from '../components/properties/ActiveAlertSection';
@@ -165,10 +164,6 @@ export default function Properties() {
         onAddressFocus={() => setShowAddressSuggestions(true)}
         onSelectAddressSuggestion={handleSelectAddressSuggestion}
       />
-
-      {/* Pushes Developer tools to the bottom when the content is short */}
-      <View style={styles.spacer} />
-      <DeveloperTools />
     </ScrollView>
   );
 }
@@ -182,9 +177,5 @@ const styles = StyleSheet.create({
   selectorWrapper: {
     flexGrow: 0,
     marginBottom: 22,
-  },
-  spacer: {
-    flexGrow: 1,
-    minHeight: 16,
   },
 });

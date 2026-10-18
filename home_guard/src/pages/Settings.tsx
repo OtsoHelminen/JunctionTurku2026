@@ -1,13 +1,16 @@
 import React from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import DeveloperTools from '../components/properties/DeveloperTools';
 import { useTheme } from '../theme/ThemeContext';
 
 export default function Settings() {
   const { isDark, toggleTheme, colors } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+    <ScrollView
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={styles.container}
+    >
       <View
         style={[styles.settingRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
       >
@@ -25,13 +28,16 @@ export default function Settings() {
           accessibilityLabel="Dark theme"
         />
       </View>
-    </View>
+      <View style={styles.developerTools}>
+        <DeveloperTools />
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     padding: 16,
   },
   title: {
@@ -50,6 +56,9 @@ const styles = StyleSheet.create({
   },
   settingText: {
     flex: 1,
+  },
+  developerTools: {
+    marginTop: 20,
   },
   settingTitle: {
     fontSize: 16,
