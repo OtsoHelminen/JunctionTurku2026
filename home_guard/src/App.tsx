@@ -11,7 +11,9 @@ import {
 } from '@expo-google-fonts/atkinson-hyperlegible';
 import Navigation from './navigation/Navigation';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
-import { View } from 'react-native';
+import { LogBox, View } from 'react-native';
+
+LogBox.ignoreAllLogs();
 
 function ThemedApp() {
   const { isReady, colors } = useTheme();
