@@ -66,7 +66,6 @@ def ask_payload():
     p = {
         "title": ask("title", default="Data updated"),
         "body": ask("body", default="New data is available."),
-        "sound": ask("sound", default="default"),
     }
     d = ask("data as JSON, e.g. {\"k\": 1}")
     if d:

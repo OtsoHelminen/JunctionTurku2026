@@ -82,7 +82,6 @@ class NotificationPayload(BaseModel):
 
     title: str | None = "Data updated"
     body: str | None = "New data is available."
-    sound: str | None = "default"
     data: dict[str, Any] | None = None
 
 

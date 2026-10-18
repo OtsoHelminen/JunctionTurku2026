@@ -1,20 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import type { AlertEntry, Urgency } from './alert';
-import { useTheme } from '../../theme/ThemeContext';
-
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
-
-const URGENCY_STYLES: Record<
-  Urgency,
-  { label: string; icon: IconName; accent: string; background: string }
-> = {
-  immediate: { label: 'Immediate', icon: 'warning', accent: '#dc2626', background: '#fef2f2' },
-  today: { label: 'Today', icon: 'alert-circle', accent: '#ea580c', background: '#fff7ed' },
-  this_week: { label: 'This week', icon: 'time', accent: '#ca8a04', background: '#fefce8' },
-  monitor: { label: 'Monitor', icon: 'eye', accent: '#2563eb', background: '#eff6ff' },
-};
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import type { AlertEntry } from './alert';
+import { FONTS, useTheme } from '../../theme/ThemeContext';
+import { URGENCY_STYLES } from '../../theme/urgency';
 
 const COLLAPSED_COUNT = 3;
 
@@ -24,7 +13,7 @@ interface ActiveAlertSectionProps {
 }
 
 export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [showAll, setShowAll] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const visibleAlerts = showAll ? alerts : alerts.slice(0, COLLAPSED_COUNT);
@@ -44,77 +33,101 @@ export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) 
       <View style={styles.headingRow}>
         <Text style={[styles.heading, { color: colors.text }]}>Active alerts</Text>
         {canToggle && (
-          <TouchableOpacity
+          <Pressable
+            style={styles.showAllButton}
             onPress={() => setShowAll((value) => !value)}
-            hitSlop={8}
+            android_ripple={{ color: colors.accentSoft, borderless: true }}
             accessibilityRole="button"
           >
-            <Text style={[styles.showAll, { color: colors.secondaryText }]}>
-              {showAll ? 'Show less' : 'Show All'}
+            <Text style={[styles.showAll, { color: colors.accentText }]}>
+              {showAll ? 'Show less' : 'Show all'}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
 
       {visibleAlerts.length === 0 ? (
-        <View
-          style={[
-            styles.emptyCard,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-        >
-          <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-          <Text style={[styles.emptyText, { color: colors.secondaryText }]}>No active alerts</Text>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+          <MaterialIcons name="check-circle" size={26} color={colors.accentText} />
+          <Text style={[styles.emptyText, { color: colors.muted }]}>No active alerts</Text>
         </View>
       ) : (
         visibleAlerts.map((alert) => {
           const urgency = URGENCY_STYLES[alert.urgency];
           const isExpanded = expandedIds.has(alert.id);
+          const isFilled = urgency.fill !== null;
+          const textColor = isFilled ? urgency.onFill : colors.text;
+          const subtitleColor = isFilled ? urgency.onFill : colors.muted;
+
           return (
-            <TouchableOpacity
+            <View
               key={alert.id}
-              style={[
-                styles.card,
-                {
-                  backgroundColor: isDark ? colors.surface : urgency.background,
-                  borderLeftColor: urgency.accent,
-                },
-              ]}
-              onPress={() => toggleExpanded(alert.id)}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={`${urgency.label}: ${alert.title}`}
-              accessibilityHint={isExpanded ? 'Collapse alert' : 'Expand alert'}
-              accessibilityState={{ expanded: isExpanded }}
+              style={[styles.cardShell, isFilled && { boxShadow: urgency.shadow ?? undefined }]}
             >
-              <Ionicons name={urgency.icon} size={26} color={urgency.accent} />
-              <View style={styles.cardBody}>
-                <Text
-                  style={[styles.cardTitle, { color: colors.text }]}
-                  numberOfLines={isExpanded ? undefined : 2}
-                >
-                  {alert.title}
-                </Text>
-                {alert.subtitle ? (
+              <Pressable
+                style={[
+                  styles.card,
+                  isFilled
+                    ? {
+                        backgroundColor: urgency.fill ?? undefined,
+                        borderColor: urgency.fill ?? undefined,
+                      }
+                    : { backgroundColor: colors.surface, borderColor: colors.line },
+                ]}
+                onPress={() => toggleExpanded(alert.id)}
+                android_ripple={{ color: isFilled ? 'rgba(0,0,0,0.12)' : colors.accentSoft }}
+                accessibilityRole="button"
+                accessibilityLabel={`${urgency.label}: ${alert.title}`}
+                accessibilityHint={isExpanded ? 'Collapse alert' : 'Expand alert'}
+                accessibilityState={{ expanded: isExpanded }}
+              >
+                <MaterialIcons name="error" size={26} color={textColor} />
+                <View style={styles.cardBody}>
                   <Text
-                    style={[styles.cardSubtitle, { color: colors.secondaryText }]}
+                    style={[styles.cardTitle, { color: textColor }]}
                     numberOfLines={isExpanded ? undefined : 2}
                   >
-                    {alert.subtitle}
+                    {alert.title}
                   </Text>
-                ) : null}
-              </View>
-              <View style={styles.cardSide}>
-                <View style={[styles.chip, { backgroundColor: urgency.accent }]}>
-                  <Text style={styles.chipText}>{urgency.label}</Text>
+                  {alert.subtitle ? (
+                    <Text
+                      style={[styles.cardSubtitle, { color: subtitleColor }]}
+                      numberOfLines={isExpanded ? undefined : 2}
+                    >
+                      {alert.subtitle}
+                    </Text>
+                  ) : null}
                 </View>
-                <Ionicons
-                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.mutedText}
-                />
-              </View>
-            </TouchableOpacity>
+                <View style={styles.cardSide}>
+                  {isFilled ? (
+                    <View style={[styles.chip, { backgroundColor: urgency.onFill }]}>
+                      <Text style={[styles.chipText, { color: '#FFFFFF' }]}>{urgency.label}</Text>
+                    </View>
+                  ) : urgency.tag ? (
+                    <View style={[styles.chip, { backgroundColor: urgency.tag }]}>
+                      <Text style={[styles.chipText, { color: urgency.onFill }]}>
+                        {urgency.label}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View
+                      style={[
+                        styles.chip,
+                        styles.chipOutlined,
+                        { backgroundColor: colors.surface2, borderColor: colors.line },
+                      ]}
+                    >
+                      <Text style={[styles.chipText, { color: colors.text }]}>{urgency.label}</Text>
+                    </View>
+                  )}
+                  <MaterialIcons
+                    name={isExpanded ? 'expand-more' : 'chevron-right'}
+                    size={24}
+                    color={isFilled ? urgency.onFill : colors.muted}
+                  />
+                </View>
+              </Pressable>
+            </View>
           );
         })
       )}
@@ -124,77 +137,72 @@ export default function ActiveAlertSection({ alerts }: ActiveAlertSectionProps) 
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 24,
+    gap: 12,
   },
   headingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   heading: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
+    fontFamily: FONTS.heading,
+    fontSize: 20,
+  },
+  showAllButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
   showAll: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#334155',
+    fontFamily: FONTS.bodyBold,
+    fontSize: 15,
+  },
+  cardShell: {
+    borderRadius: 18,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderRadius: 14,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   cardBody: {
     flex: 1,
+    gap: 4,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0f172a',
+    fontFamily: FONTS.bodyBold,
+    fontSize: 18,
+    lineHeight: 22.5,
   },
   cardSubtitle: {
-    marginTop: 2,
-    fontSize: 13,
-    color: '#475569',
+    fontFamily: FONTS.body,
+    fontSize: 15,
+    lineHeight: 20,
   },
   cardSide: {
     alignItems: 'flex-end',
-    gap: 8,
+    gap: 10,
   },
   chip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  chipOutlined: {
+    borderWidth: 1,
   },
   chipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  emptyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    fontFamily: FONTS.bodyBold,
+    fontSize: 13,
   },
   emptyText: {
-    fontSize: 14,
-    color: '#475569',
+    flex: 1,
+    alignSelf: 'center',
+    fontFamily: FONTS.body,
+    fontSize: 16,
   },
 });

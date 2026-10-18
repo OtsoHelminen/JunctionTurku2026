@@ -1,9 +1,9 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../theme/ThemeContext';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FONTS, useTheme } from '../theme/ThemeContext';
 
-export type IconName = keyof typeof Ionicons.glyphMap;
+export type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 interface TabItemProps {
   label: string;
@@ -21,22 +21,33 @@ export default function TabItem({
   onPress,
 }: TabItemProps) {
   const { colors } = useTheme();
-  const iconColor = isActive ? '#2563eb' : colors.mutedText;
-  const iconName = isActive ? activeIcon : inactiveIcon;
+  const iconColor = isActive ? colors.accentText : colors.muted;
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={styles.tab}
       onPress={onPress}
-      activeOpacity={0.7}
-      accessibilityRole="button"
+      android_ripple={{ color: colors.accentSoft, borderless: true }}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
       accessibilityState={{ selected: isActive }}
     >
-      <Ionicons name={iconName} size={22} color={iconColor} style={styles.icon} />
-      <Text style={[styles.label, { color: colors.mutedText }, isActive && styles.activeLabel]}>
+      <View style={styles.iconContainer}>
+        <MaterialCommunityIcons
+          name={isActive ? activeIcon : inactiveIcon}
+          size={24}
+          color={iconColor}
+        />
+      </View>
+      <Text
+        style={[
+          styles.label,
+          { color: colors.muted, fontFamily: isActive ? FONTS.bodyBold : FONTS.body },
+        ]}
+      >
         {label}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -45,18 +56,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    gap: 4,
   },
-  icon: {
-    marginBottom: 4,
+  iconContainer: {
+    width: 60,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#64748b',
-  },
-  activeLabel: {
-    color: '#2563eb',
-    fontWeight: '700',
+    fontSize: 13,
   },
 });

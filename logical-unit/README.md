@@ -40,7 +40,6 @@ Lähetettävä runko (consolidatorin `NotificationPayload`):
 {
   "title": "Critical alert – Helsinki",
   "body": "Severe storm at house-1: wind 24.5 m/s",
-  "sound": "default",
   "data": {
     "kind": "alert",
     "event_id": 7,
@@ -79,7 +78,7 @@ sama `alert_id`, joten App voi päivittää olemassa olevaa hälytystä uuden lu
 | `created` | `<Severity> alert – <alue>` | hälytyksen viesti |
 | `escalated` | `Alert escalated: <Severity> – <alue>` | hälytyksen viesti |
 | `analyzed` | `Recommended action – <alue>` | Qwenin tai pelikirjan suositus (myös `data.recommendation`) ja rivi `Suggested expert: <ammatti>, approx. <min>–<max> €` |
-| `resolved` | `All clear – <alue>` | hälytyksen viesti, ei ääntä |
+| `resolved` | `All clear – <alue>` | hälytyksen viesti |
 
 Vakavuus otsikossa: Info, Low, Medium, High, Critical. Kaikki ilmoitusten tekstit ovat englanniksi.
 

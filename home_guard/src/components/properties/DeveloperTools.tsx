@@ -1,20 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { registerForPush, sendTestLocalNotification } from '../../api/notifications';
-import { useTheme } from '../../theme/ThemeContext';
+import { FONTS, useTheme } from '../../theme/ThemeContext';
 import type { ReceivedNotificationInfo } from './types';
 
 export default function DeveloperTools() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>('Press button to request token');
@@ -82,86 +75,86 @@ export default function DeveloperTools() {
   };
 
   return (
-    <>
-      <TouchableOpacity
-        style={[styles.developerToolsToggle, { borderTopColor: colors.border }]}
+    <View>
+      <Pressable
+        style={styles.developerToolsToggle}
         onPress={() => setIsExpanded((expanded) => !expanded)}
-        activeOpacity={0.75}
+        android_ripple={{ color: colors.accentSoft }}
         accessibilityRole="button"
         accessibilityLabel="Developer tools"
         accessibilityState={{ expanded: isExpanded }}
       >
-        <Text style={[styles.developerToolsTitle, { color: colors.mutedText }]}>
-          Developer tools
-        </Text>
-        <Ionicons
-          name={isExpanded ? 'chevron-up' : 'chevron-down'}
-          size={18}
-          color={colors.mutedText}
+        <MaterialIcons name="code" size={26} color={colors.text} />
+        <Text style={[styles.developerToolsTitle, { color: colors.text }]}>Developer tools</Text>
+        <MaterialIcons
+          name={isExpanded ? 'expand-more' : 'chevron-right'}
+          size={24}
+          color={colors.muted}
         />
-      </TouchableOpacity>
+      </Pressable>
       {isExpanded && (
         <View style={styles.developerToolsContent}>
-          <Text style={[styles.subheading, { color: colors.mutedText }]}>
-            Push Notification Tester
-          </Text>
+          <Text style={[styles.subheading, { color: colors.muted }]}>Push Notification Tester</Text>
 
           <View style={styles.buttonGroup}>
-            <TouchableOpacity
-              style={[styles.button, styles.primaryButton, loading && styles.buttonDisabled]}
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                { backgroundColor: colors.accent },
+                (pressed || loading) && styles.buttonPressed,
+              ]}
               onPress={handleRequestToken}
               disabled={loading}
-              activeOpacity={0.8}
+              accessibilityRole="button"
             >
               {loading ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
-                <Text style={styles.primaryButtonText}>Request Push Token</Text>
+                <Text style={[styles.buttonText, { color: colors.onAccent }]}>
+                  Request Push Token
+                </Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={[
+            <Pressable
+              style={({ pressed }) => [
                 styles.button,
-                styles.secondaryButton,
-                { backgroundColor: colors.surface, borderColor: colors.inputBorder },
+                { backgroundColor: colors.surface2 },
+                pressed && styles.buttonPressed,
               ]}
               onPress={handleSendTestNotification}
-              activeOpacity={0.8}
+              accessibilityRole="button"
             >
-              <Text style={[styles.secondaryButtonText, { color: colors.secondaryText }]}>
+              <Text style={[styles.buttonText, { color: colors.text }]}>
                 Send Test Notification
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <View
             style={[
               styles.card,
-              isError ? styles.cardError : [styles.cardInfo, isDark && styles.darkCardInfo],
+              {
+                backgroundColor: colors.surface,
+                borderColor: isError ? colors.error : colors.line,
+              },
             ]}
           >
-            <Text style={[styles.cardLabel, { color: colors.mutedText }]}>Status</Text>
-            <Text style={[styles.cardText, { color: colors.text }, isError && styles.errorText]}>
+            <Text style={[styles.cardLabel, { color: colors.muted }]}>Status</Text>
+            <Text style={[styles.cardText, { color: isError ? colors.error : colors.text }]}>
               {statusMessage}
             </Text>
           </View>
 
           {token && (
             <View
-              style={[
-                styles.tokenCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
+              style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}
             >
-              <Text style={[styles.cardLabel, { color: colors.mutedText }]}>
+              <Text style={[styles.cardLabel, { color: colors.muted }]}>
                 Expo Push Token (Select & Copy):
               </Text>
               <Text
-                style={[
-                  styles.tokenText,
-                  { color: colors.text, backgroundColor: colors.subtleSurface },
-                ]}
+                style={[styles.mono, { color: colors.text, backgroundColor: colors.surface2 }]}
                 selectable
               >
                 {token}
@@ -171,26 +164,20 @@ export default function DeveloperTools() {
 
           {lastNotification && (
             <View
-              style={[
-                styles.receivedCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
+              style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}
             >
-              <Text style={[styles.cardLabel, { color: colors.mutedText }]}>
+              <Text style={[styles.cardLabel, { color: colors.muted }]}>
                 Last Received Notification:
               </Text>
               <Text style={[styles.notificationTitle, { color: colors.text }]}>
                 {lastNotification.title ?? 'No title'}
               </Text>
-              <Text style={[styles.notificationBody, { color: colors.secondaryText }]}>
+              <Text style={[styles.cardText, { color: colors.muted }]}>
                 {lastNotification.body ?? 'No body'}
               </Text>
               {Object.keys(lastNotification.data).length > 0 && (
                 <Text
-                  style={[
-                    styles.notificationData,
-                    { color: colors.mutedText, backgroundColor: colors.subtleSurface },
-                  ]}
+                  style={[styles.mono, { color: colors.muted, backgroundColor: colors.surface2 }]}
                   selectable
                 >
                   Data: {JSON.stringify(lastNotification.data, null, 2)}
@@ -200,139 +187,72 @@ export default function DeveloperTools() {
           )}
         </View>
       )}
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   developerToolsToggle: {
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    gap: 14,
+    paddingHorizontal: 16,
   },
   developerToolsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748b',
+    flex: 1,
+    fontFamily: FONTS.body,
+    fontSize: 17,
   },
   developerToolsContent: {
-    paddingTop: 4,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
   },
   subheading: {
+    fontFamily: FONTS.body,
     fontSize: 14,
-    color: '#64748b',
-    marginBottom: 20,
   },
   buttonGroup: {
     gap: 12,
-    marginBottom: 20,
   },
   button: {
-    paddingVertical: 14,
+    height: 52,
+    borderRadius: 26,
     paddingHorizontal: 20,
-    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButton: {
-    backgroundColor: '#2563eb',
+  buttonPressed: {
+    opacity: 0.85,
   },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-  },
-  secondaryButtonText: {
-    color: '#334155',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
+  buttonText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 17,
   },
   card: {
     padding: 16,
-    borderRadius: 10,
-    marginBottom: 16,
+    borderRadius: 18,
     borderWidth: 1,
-  },
-  cardInfo: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#bfdbfe',
-  },
-  darkCardInfo: {
-    backgroundColor: '#172554',
-    borderColor: '#1e40af',
-  },
-  cardError: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
+    gap: 6,
   },
   cardLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontFamily: FONTS.bodyBold,
+    fontSize: 13,
     textTransform: 'uppercase',
-    color: '#64748b',
-    marginBottom: 6,
   },
   cardText: {
-    fontSize: 14,
-    color: '#1e293b',
-  },
-  errorText: {
-    color: '#dc2626',
-    fontWeight: '500',
-  },
-  tokenCard: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 16,
-  },
-  tokenText: {
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
-    fontSize: 12,
-    color: '#0f172a',
-    backgroundColor: '#f1f5f9',
-    padding: 10,
-    borderRadius: 6,
-    marginTop: 6,
-  },
-  receivedCard: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    fontFamily: FONTS.body,
+    fontSize: 15,
   },
   notificationTitle: {
+    fontFamily: FONTS.bodyBold,
     fontSize: 16,
-    fontWeight: '600',
-    color: '#0f172a',
-    marginTop: 4,
   },
-  notificationBody: {
-    fontSize: 14,
-    color: '#475569',
-    marginTop: 2,
-  },
-  notificationData: {
-    fontSize: 11,
-    color: '#64748b',
-    backgroundColor: '#f1f5f9',
-    padding: 8,
-    borderRadius: 6,
-    marginTop: 8,
+  mono: {
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    fontSize: 12,
+    padding: 10,
+    borderRadius: 8,
   },
 });

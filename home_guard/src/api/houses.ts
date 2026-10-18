@@ -1,4 +1,5 @@
 import { API_URL } from './config';
+import { withTimeout } from './http';
 
 export interface House {
   id: number;
@@ -40,22 +41,32 @@ async function readResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export async function fetchHouses(): Promise<House[]> {
-  const response = await fetch(`${API_URL}/app/houses`);
-  const result = await readResponse<HousesResponse>(response);
+// The timeout covers reading the body too, not just the response headers
+function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return withTimeout(
+    async (signal) => readResponse<T>(await fetch(`${API_URL}${path}`, { ...init, signal })),
+    { signal: init.signal ?? undefined }
+  );
+}
+
+export async function fetchHouses(signal?: AbortSignal): Promise<House[]> {
+  const result = await requestJson<HousesResponse>('/app/houses', { signal });
   if (!Array.isArray(result.houses)) {
     throw new Error('The houses response has an invalid format.');
   }
   return result.houses;
 }
 
-export async function createHouse(payload: CreateHousePayload): Promise<House> {
-  const response = await fetch(`${API_URL}/app/houses`, {
+export async function createHouse(
+  payload: CreateHousePayload,
+  signal?: AbortSignal
+): Promise<House> {
+  const result = await requestJson<HouseResponse>('/app/houses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: 'system', ...payload }),
+    signal,
   });
-  const result = await readResponse<HouseResponse>(response);
   if (!result.house || typeof result.house.id !== 'number') {
     throw new Error('The created house response has an invalid format.');
   }

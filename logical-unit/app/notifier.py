@@ -1,6 +1,6 @@
 """Push-ilmoitukset Appiin: hälytystapahtumat lähetetään Data Consolidatorin kautta Expoon.
 
-  POST {CONSOLIDATOR_URL}/app/notify   {"title", "body", "sound", "data"}
+  POST {CONSOLIDATOR_URL}/app/notify   {"title", "body", "data"}
 
 Lähettäjä lukee alert_events-taulua kursorilla (notifier_state), joten mitään ei katoa:
 jos consolidator ei vastaa, kursori ei etene ja tapahtuma yritetään uudelleen seuraavalla
@@ -57,7 +57,6 @@ def build_notification(event: dict[str, Any]) -> dict[str, Any]:
     return {
         "title": title,
         "body": body[:500],
-        "sound": "default" if event_type != "resolved" else None,
         "data": {
             "kind": "alert",
             "event_id": event["event_id"],

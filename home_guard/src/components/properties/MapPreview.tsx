@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useTheme } from '../../theme/ThemeContext';
 import type { Coordinates } from './types';
@@ -8,7 +8,7 @@ import type { Coordinates } from './types';
 const MAP_ZOOM = 8;
 const MAP_TILE_SIZE = 160;
 const MAP_TILE_COUNT = 3;
-const MAP_HEIGHT = 200;
+const MAP_HEIGHT = 150;
 const MAP_TILE_HEADERS = {
   'User-Agent': 'HomeGuard/1.0 (property map preview)',
 };
@@ -43,10 +43,7 @@ export default function MapPreview({ coordinates }: { coordinates: Coordinates }
 
   return (
     <View
-      style={[
-        styles.mapFrame,
-        { borderColor: colors.border, backgroundColor: colors.subtleSurface },
-      ]}
+      style={[styles.mapFrame, { borderColor: colors.line, backgroundColor: colors.surface2 }]}
       onLayout={(event) => setMapWidth(event.nativeEvent.layout.width)}
       accessibilityLabel="Map preview showing the selected location"
     >
@@ -76,10 +73,10 @@ export default function MapPreview({ coordinates }: { coordinates: Coordinates }
             />
           );
         })}
-      <Ionicons
-        name="location-sharp"
-        size={32}
-        color="#dc2626"
+      <MaterialIcons
+        name="location-on"
+        size={44}
+        color="#FF4A3D"
         style={styles.mapMarker}
         accessibilityLabel="Selected location marker"
       />
@@ -98,10 +95,8 @@ const styles = StyleSheet.create({
     height: MAP_HEIGHT,
     position: 'relative',
     overflow: 'hidden',
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#e2e8f0',
   },
   mapTile: {
     position: 'absolute',
@@ -112,8 +107,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     top: '50%',
-    marginLeft: -16,
-    marginTop: -30,
+    marginLeft: -22,
+    marginTop: -40,
   },
   mapErrorMessage: {
     position: 'absolute',

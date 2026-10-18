@@ -1,19 +1,19 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { formatPriceRange } from './alert';
 import type { ExpertSuggestion } from './alert';
-import { useTheme } from '../../theme/ThemeContext';
+import { FONTS, useTheme } from '../../theme/ThemeContext';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
 function iconForProfession(profession: string): IconName {
   const value = profession.toLowerCase();
-  if (value.includes('roof')) return 'home-outline';
-  if (value.includes('plumb')) return 'water-outline';
-  if (value.includes('chimney') || value.includes('sweep')) return 'flame-outline';
-  if (value.includes('electric')) return 'flash-outline';
-  return 'construct-outline';
+  if (value.includes('roof')) return 'roofing';
+  if (value.includes('plumb')) return 'plumbing';
+  if (value.includes('chimney') || value.includes('sweep')) return 'local-fire-department';
+  if (value.includes('electric')) return 'electrical-services';
+  return 'construction';
 }
 
 interface OrderHelpSectionProps {
@@ -22,39 +22,85 @@ interface OrderHelpSectionProps {
 
 export default function OrderHelpSection({ experts }: OrderHelpSectionProps) {
   const { colors } = useTheme();
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   if (experts.length === 0) return null;
+
+  const toggleExpanded = (key: string) => {
+    setExpandedKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // The alert payload has no contact details yet, so this only confirms the tap
+  const contactExpert = (expert: ExpertSuggestion) => {
+    Alert.alert(
+      `Contact ${expert.name ?? expert.profession}`,
+      'Contact requests are not available yet.'
+    );
+  };
 
   return (
     <View style={styles.section}>
       <Text style={[styles.heading, { color: colors.text }]}>Order help</Text>
       {experts.map((expert) => {
         const price = formatPriceRange(expert.priceMin, expert.priceMax);
+        const isExpanded = expandedKeys.has(expert.key);
         return (
-          <View key={expert.key} style={styles.row}>
-            <View
-              style={[
-                styles.iconTile,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
+          <View key={expert.key} style={styles.item}>
+            <Pressable
+              style={styles.row}
+              onPress={() => toggleExpanded(expert.key)}
+              android_ripple={{ color: colors.accentSoft }}
+              accessibilityRole="button"
+              accessibilityLabel={expert.profession}
+              accessibilityHint={isExpanded ? 'Hide contact options' : 'Show contact options'}
+              accessibilityState={{ expanded: isExpanded }}
             >
-              <Ionicons
-                name={iconForProfession(expert.profession)}
-                size={28}
-                color={colors.secondaryText}
+              <View
+                style={[
+                  styles.iconTile,
+                  { backgroundColor: colors.surface, borderColor: colors.line },
+                ]}
+              >
+                <MaterialIcons
+                  name={iconForProfession(expert.profession)}
+                  size={30}
+                  color={colors.text}
+                />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={[styles.profession, { color: colors.text }]}>{expert.profession}</Text>
+                {expert.name ? (
+                  <Text style={[styles.meta, { color: colors.muted }]}>{expert.name}</Text>
+                ) : null}
+                {price ? <Text style={[styles.meta, { color: colors.muted }]}>{price}</Text> : null}
+              </View>
+              <MaterialIcons
+                name={isExpanded ? 'expand-more' : 'chevron-right'}
+                size={24}
+                color={colors.muted}
               />
-            </View>
-            <View style={styles.rowBody}>
-              <Text style={[styles.profession, { color: colors.text }]}>{expert.profession}</Text>
-              {expert.name ? (
-                <Text style={[styles.name, { color: colors.secondaryText }]}>{expert.name}</Text>
-              ) : null}
-              {price ? (
-                <View style={styles.priceRow}>
-                  <Ionicons name="cash-outline" size={14} color={colors.mutedText} />
-                  <Text style={[styles.price, { color: colors.mutedText }]}>{price}</Text>
-                </View>
-              ) : null}
-            </View>
+            </Pressable>
+            {isExpanded && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.contactButton,
+                  { backgroundColor: colors.accent },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => contactExpert(expert)}
+                accessibilityRole="button"
+                accessibilityLabel={`Contact ${expert.name ?? expert.profession} now`}
+              >
+                <MaterialIcons name="call" size={22} color={colors.onAccent} />
+                <Text style={[styles.contactButtonText, { color: colors.onAccent }]}>
+                  Contact now
+                </Text>
+              </Pressable>
+            )}
           </View>
         );
       })}
@@ -64,51 +110,54 @@ export default function OrderHelpSection({ experts }: OrderHelpSectionProps) {
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 24,
+    gap: 12,
   },
   heading: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginBottom: 12,
+    fontFamily: FONTS.heading,
+    fontSize: 20,
+  },
+  item: {
+    gap: 10,
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 14,
-    marginBottom: 14,
+    minHeight: 64,
   },
   iconTile: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rowBody: {
     flex: 1,
+    gap: 2,
   },
   profession: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 18,
+  },
+  meta: {
+    fontFamily: FONTS.body,
     fontSize: 15,
-    fontWeight: '600',
-    color: '#0f172a',
   },
-  name: {
-    marginTop: 2,
-    fontSize: 13,
-    color: '#475569',
-  },
-  priceRow: {
+  contactButton: {
+    height: 52,
+    borderRadius: 26,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+    justifyContent: 'center',
+    gap: 8,
   },
-  price: {
-    fontSize: 12,
-    color: '#64748b',
+  pressed: {
+    opacity: 0.85,
+  },
+  contactButtonText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 17,
   },
 });

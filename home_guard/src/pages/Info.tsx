@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
+import { FONTS, useTheme } from '../theme/ThemeContext';
 
 type Task = {
   id: string;
@@ -87,24 +87,26 @@ const INITIAL_TASKS: Task[] = [
 
 // Red -> green segments for the index bar
 const SEGMENT_COLORS = [
-  '#ef4444',
-  '#f2582f',
-  '#f2742c',
-  '#f59a2a',
-  '#f5b82e',
-  '#f2d12f',
-  '#dbe03a',
-  '#bfdc3f',
-  '#9fd44a',
-  '#7ccb4f',
-  '#55bf4f',
-  '#2fae4a',
+  '#E5484D',
+  '#EE5A35',
+  '#F2742B',
+  '#F5952A',
+  '#F6B52B',
+  '#EECF2E',
+  '#D9DE34',
+  '#B9DB3C',
+  '#97D145',
+  '#77C84C',
+  '#5DBF4F',
+  '#34A853',
 ];
 
 export default function Info() {
   const [score, setScore] = useState(BASE_SCORE);
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const { colors } = useTheme();
+  // The marker sits above the segment the score falls into (77% -> 10th of 12)
+  const markerIndex = Math.max(1, Math.ceil((score / 100) * SEGMENT_COLORS.length)) - 1;
 
   const completeTask = (task: Task) => {
     setScore((s) => Math.min(100, s + task.points));
@@ -112,36 +114,34 @@ export default function Info() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       {/* Fixed header: always visible */}
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.background, borderBottomColor: colors.border },
-        ]}
-      >
-        <Text style={[styles.title, { color: colors.text }]}>Home Safety Index</Text>
+      <View style={[styles.header, { borderBottomColor: colors.line }]}>
+        <Text style={[styles.title, { color: colors.text }]} accessibilityRole="header">
+          Home Safety Index
+        </Text>
 
         {/* Index bar */}
-        <View style={styles.barWrapper}>
-          <View style={styles.markerTrack}>
-            <Text style={[styles.marker, { left: `${score}%`, color: colors.text }]}>▼</Text>
-          </View>
-          <View style={styles.barRow}>
-            <View style={styles.bar}>
+        <View
+          style={styles.barRow}
+          accessible
+          accessibilityLabel={`Home Safety Index ${score} percent`}
+        >
+          <View style={styles.barColumn}>
+            <View style={styles.segmentRow}>
               {SEGMENT_COLORS.map((color, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.segment,
-                    { backgroundColor: color },
-                    i < SEGMENT_COLORS.length - 1 && styles.segmentGap,
-                  ]}
-                />
+                <Text key={color} style={[styles.marker, { color: colors.text }]}>
+                  {i === markerIndex ? '▼' : ''}
+                </Text>
               ))}
             </View>
-            <Text style={[styles.score, { color: colors.text }]}>{score}%</Text>
+            <View style={[styles.segmentRow, styles.bar]}>
+              {SEGMENT_COLORS.map((color) => (
+                <View key={color} style={[styles.segment, { backgroundColor: color }]} />
+              ))}
+            </View>
           </View>
+          <Text style={[styles.score, { color: colors.text }]}>{score}%</Text>
         </View>
 
         <Text style={[styles.intro, { color: colors.text }]}>
@@ -158,28 +158,39 @@ export default function Info() {
         showsVerticalScrollIndicator={false}
       >
         {tasks.map((task) => (
-          <View key={task.id} style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View
+            key={task.id}
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}
+          >
             <Text style={[styles.cardTitle, { color: colors.text }]}>
               {task.title} (+{task.points} points)
             </Text>
-            <Text style={[styles.cardText, { color: colors.mutedText }]}>{task.description}</Text>
+            <Text style={[styles.cardText, { color: colors.muted }]}>{task.description}</Text>
             <View style={styles.buttonRow}>
               <Pressable
                 onPress={() => completeTask(task)}
-                style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+                style={({ pressed }) => [
+                  styles.button,
+                  { backgroundColor: colors.accent },
+                  pressed && styles.buttonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Mark ${task.title} done`}
               >
-                <Text style={styles.buttonText}>Done</Text>
+                <Text style={[styles.buttonText, { color: colors.onAccent }]}>Done</Text>
               </Pressable>
             </View>
           </View>
         ))}
 
         {tasks.length === 0 && (
-          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}
+          >
             <Text style={[styles.cardTitle, { color: colors.text }]}>
               All challenges completed 🎉
             </Text>
-            <Text style={[styles.cardText, { color: colors.mutedText }]}>
+            <Text style={[styles.cardText, { color: colors.muted }]}>
               Great work! Your home is as safe as it gets.
             </Text>
           </View>
@@ -194,108 +205,96 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 18,
+    paddingTop: 20,
+    paddingBottom: 18,
+    gap: 14,
+    borderBottomWidth: 1,
   },
   list: {
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 12,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 12,
+    fontFamily: FONTS.heading,
+    fontSize: 24,
   },
 
   // Index bar
-  barWrapper: {
-    marginBottom: 16,
-  },
-  markerTrack: {
-    // Matches bar width (score label takes ~70px on the right)
-    marginRight: 70,
-    height: 16,
-    position: 'relative',
-  },
-  marker: {
-    position: 'absolute',
-    top: 0,
-    marginLeft: -7,
-    fontSize: 14,
-  },
   barRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  barColumn: {
+    flex: 1,
+    gap: 4,
+  },
+  segmentRow: {
+    flexDirection: 'row',
+    gap: 3,
   },
   bar: {
-    flex: 1,
-    flexDirection: 'row',
-    height: 26,
-    marginRight: 12,
+    height: 22,
   },
   segment: {
     flex: 1,
+    borderRadius: 4,
   },
-  segmentGap: {
-    marginRight: 2,
+  marker: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 14,
+    textAlign: 'center',
   },
   score: {
-    width: 58,
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111',
+    fontFamily: FONTS.heading,
+    fontSize: 28,
+    lineHeight: 28,
   },
 
   intro: {
-    fontSize: 15,
-    lineHeight: 21,
-    marginBottom: 12,
+    fontFamily: FONTS.body,
+    fontSize: 16,
+    lineHeight: 23,
   },
 
   // Task cards
   card: {
-    borderRadius: 14,
+    borderRadius: 18,
+    borderWidth: 1,
     padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    gap: 8,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 6,
+    fontFamily: FONTS.bodyBold,
+    fontSize: 17,
+    lineHeight: 21,
   },
   cardText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: FONTS.body,
+    fontSize: 15,
+    lineHeight: 21,
   },
   buttonRow: {
     alignItems: 'flex-end',
-    marginTop: 10,
   },
   button: {
-    backgroundColor: '#2563eb',
-    borderRadius: 999,
-    minWidth: 130,
-    paddingVertical: 8,
-    paddingHorizontal: 24,
+    width: 140,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonPressed: {
-    opacity: 0.8,
+    opacity: 0.85,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
+    fontFamily: FONTS.bodyBold,
+    fontSize: 17,
   },
 });
