@@ -28,20 +28,20 @@ const TABS: TabConfig[] = [
   {
     name: 'Info',
     label: 'Info',
-    activeIcon: 'information-circle',
-    inactiveIcon: 'information-circle-outline',
+    activeIcon: 'information',
+    inactiveIcon: 'information-outline',
   },
   {
     name: 'Check',
     label: 'Check',
-    activeIcon: 'checkmark-circle',
-    inactiveIcon: 'checkmark-circle-outline',
+    activeIcon: 'check-circle',
+    inactiveIcon: 'check-circle-outline',
   },
   {
     name: 'Settings',
     label: 'Settings',
-    activeIcon: 'settings',
-    inactiveIcon: 'settings-outline',
+    activeIcon: 'cog',
+    inactiveIcon: 'cog-outline',
   },
 ];
 
@@ -54,9 +54,10 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
       style={[
         styles.tabBar,
         {
-          paddingBottom: Math.max(insets.bottom, 12),
+          height: 80 + insets.bottom,
+          paddingBottom: insets.bottom,
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          borderTopColor: colors.line,
         },
       ]}
     >
@@ -77,9 +78,6 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingTop: 8,
   },
 });

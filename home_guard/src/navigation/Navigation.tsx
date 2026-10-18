@@ -26,7 +26,7 @@ export default function Navigation() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <Header title={activeTab} />
       <View style={styles.content}>{renderPage()}</View>
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />

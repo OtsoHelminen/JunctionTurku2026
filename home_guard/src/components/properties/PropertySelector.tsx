@@ -1,15 +1,8 @@
 import React from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import type { PropertyEntry } from './types';
-import { useTheme } from '../../theme/ThemeContext';
+import { FONTS, useTheme } from '../../theme/ThemeContext';
 
 interface PropertySelectorProps {
   entries: PropertyEntry[];
@@ -31,10 +24,10 @@ export default function PropertySelector({
   const { colors } = useTheme();
 
   return (
-    <>
-      <View style={styles.propertiesHeadingRow}>
-        <Text style={[styles.propertiesHeading, { color: colors.text }]}>Properties</Text>
-        {isLoading && <ActivityIndicator size="small" color="#2563eb" />}
+    <View style={styles.section}>
+      <View style={styles.headingRow}>
+        <Text style={[styles.heading, { color: colors.text }]}>Properties</Text>
+        {isLoading && <ActivityIndicator size="small" color={colors.accentText} />}
       </View>
       <ScrollView
         horizontal
@@ -45,11 +38,10 @@ export default function PropertySelector({
         {entries.map((property) => {
           const isSelected = selectedId === property.id;
           return (
-            <TouchableOpacity
+            <Pressable
               key={property.id}
               style={styles.propertyItem}
               onPress={() => onSelect(property.id)}
-              activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={property.address}
               accessibilityState={{ selected: isSelected }}
@@ -57,29 +49,32 @@ export default function PropertySelector({
               <View
                 style={[
                   styles.propertyTile,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                  isSelected && [
-                    styles.propertyTileSelected,
-                    { backgroundColor: colors.selectedSurface },
-                  ],
+                  { backgroundColor: colors.surface, borderColor: colors.line },
+                  isSelected && { borderColor: colors.accent, borderWidth: 2 },
                 ]}
               >
-                <Ionicons name="home" size={28} color={isSelected ? '#2563eb' : '#64748b'} />
+                <MaterialIcons
+                  name="home"
+                  size={34}
+                  color={isSelected ? colors.accentText : colors.muted}
+                />
               </View>
               <Text
-                style={[styles.propertyAddress, { color: colors.secondaryText }]}
+                style={[
+                  styles.propertyLabel,
+                  { color: colors.text, fontFamily: isSelected ? FONTS.bodyBold : FONTS.body },
+                ]}
                 numberOfLines={1}
               >
                 {property.address}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
 
-        <TouchableOpacity
+        <Pressable
           style={styles.propertyItem}
           onPress={onAdd}
-          activeOpacity={0.75}
           accessibilityRole="button"
           accessibilityLabel="Add a property"
         >
@@ -87,69 +82,72 @@ export default function PropertySelector({
             style={[
               styles.propertyTile,
               styles.addPropertyTile,
-              { backgroundColor: colors.surface },
+              { borderColor: colors.accentText },
             ]}
           >
-            <Ionicons name="add" size={30} color="#2563eb" />
+            <MaterialIcons name="add" size={36} color={colors.accentText} />
           </View>
-          <Text style={[styles.propertyAddress, { color: colors.secondaryText }]}>
-            Add property
-          </Text>
-        </TouchableOpacity>
+          <Text style={[styles.propertyLabel, { color: colors.muted }]}>Add property</Text>
+        </Pressable>
       </ScrollView>
-      {error ? <Text style={styles.propertyError}>{error}</Text> : null}
-    </>
+      {error ? (
+        <View style={styles.errorRow}>
+          <MaterialIcons name="error" size={20} color={colors.error} />
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  propertiesHeadingRow: {
+  section: {
+    gap: 12,
+  },
+  headingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
   },
-  propertiesHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f172a',
+  heading: {
+    fontFamily: FONTS.heading,
+    fontSize: 20,
   },
   propertyList: {
-    gap: 14,
+    gap: 12,
   },
   propertyItem: {
-    width: 82,
+    width: 112,
     alignItems: 'center',
+    gap: 6,
   },
   propertyTile: {
-    width: 68,
-    height: 68,
-    borderRadius: 14,
+    width: 112,
+    height: 96,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  propertyTileSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
-  },
   addPropertyTile: {
+    borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#93c5fd',
   },
-  propertyAddress: {
+  propertyLabel: {
     width: '100%',
-    marginTop: 6,
-    fontSize: 11,
-    color: '#475569',
+    fontFamily: FONTS.body,
+    fontSize: 15,
     textAlign: 'center',
   },
-  propertyError: {
-    marginTop: -14,
-    marginBottom: 14,
-    color: '#b91c1c',
-    fontSize: 13,
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontFamily: FONTS.body,
+    fontSize: 14,
+    lineHeight: 19,
   },
 });

@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { useTheme } from '../../theme/ThemeContext';
+import { FONTS, useTheme } from '../../theme/ThemeContext';
 import MapPreview from './MapPreview';
 import type { Coordinates } from './types';
 
@@ -46,7 +46,9 @@ export default function AddPropertyModal({
   onAddressFocus,
   onSelectAddressSuggestion,
 }: AddPropertyModalProps) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
+  const [isFocused, setIsFocused] = useState(false);
+  const errorMessage = addressError || propertyError;
 
   return (
     <Modal
@@ -57,13 +59,13 @@ export default function AddPropertyModal({
       navigationBarTranslucent
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={[
-          styles.modalBackdrop,
-          { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.65)' : 'rgba(15, 23, 42, 0.45)' },
-        ]}
-        behavior="padding"
-      >
+      <KeyboardAvoidingView style={styles.modalBackdrop} behavior="padding">
+        {/* Tapping the scrim closes the dialog */}
+        <Pressable
+          style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]}
+          onPress={onClose}
+          accessibilityLabel="Close dialog"
+        />
         <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
           <ScrollView
             style={styles.modalScroll}
@@ -72,105 +74,119 @@ export default function AddPropertyModal({
             showsVerticalScrollIndicator={false}
           >
             <Text style={[styles.modalTitle, { color: colors.text }]}>Add a property</Text>
-            <Text style={[styles.modalDescription, { color: colors.mutedText }]}>
+            <Text style={[styles.modalDescription, { color: colors.muted }]}>
               Enter the address of the property you want to add.
             </Text>
-            <TextInput
-              style={[
-                styles.addressInput,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.inputBorder,
-                  color: colors.text,
-                },
-                addressError && styles.addressInputError,
-              ]}
-              value={address}
-              onChangeText={onAddressChange}
-              onFocus={onAddressFocus}
-              placeholder="Address"
-              placeholderTextColor="#94a3b8"
-              autoCapitalize="words"
-              autoCorrect={false}
-              spellCheck={false}
-              autoComplete="off"
-              importantForAutofill="no"
-              textContentType="none"
-              returnKeyType="done"
-              onSubmitEditing={onAdd}
-              accessibilityLabel="Property address"
-            />
-            {showAddressSuggestions && addressSuggestions.length > 0 && (
-              <View
+            <View>
+              <TextInput
                 style={[
-                  styles.addressSuggestions,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  styles.addressInput,
+                  { backgroundColor: colors.surface, color: colors.text },
+                  isFocused
+                    ? { borderColor: colors.accent, borderWidth: 2, paddingHorizontal: 13 }
+                    : { borderColor: colors.line },
+                  addressError ? { borderColor: colors.error } : null,
                 ]}
-              >
-                {addressSuggestions.map((suggestion) => (
-                  <TouchableOpacity
-                    key={suggestion}
-                    style={[styles.addressSuggestion, { borderBottomColor: colors.border }]}
-                    onPress={() => onSelectAddressSuggestion(suggestion)}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Use address ${suggestion}`}
-                  >
-                    <Ionicons name="location-outline" size={18} color={colors.mutedText} />
-                    <Text style={[styles.addressSuggestionText, { color: colors.secondaryText }]}>
-                      {suggestion}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                value={address}
+                onChangeText={onAddressChange}
+                onFocus={() => {
+                  setIsFocused(true);
+                  onAddressFocus();
+                }}
+                onBlur={() => setIsFocused(false)}
+                placeholder="Address"
+                placeholderTextColor={colors.muted}
+                selectionColor={colors.accent}
+                autoCapitalize="words"
+                autoCorrect={false}
+                spellCheck={false}
+                autoComplete="off"
+                importantForAutofill="no"
+                textContentType="none"
+                returnKeyType="done"
+                onSubmitEditing={onAdd}
+                editable={!isCreating}
+                accessibilityLabel="Property address"
+              />
+              {showAddressSuggestions && addressSuggestions.length > 0 && (
+                <View
+                  style={[
+                    styles.addressSuggestions,
+                    { backgroundColor: colors.surface, borderColor: colors.line },
+                  ]}
+                >
+                  {addressSuggestions.map((suggestion) => (
+                    <Pressable
+                      key={suggestion}
+                      style={[styles.addressSuggestion, { borderBottomColor: colors.line }]}
+                      onPress={() => onSelectAddressSuggestion(suggestion)}
+                      android_ripple={{ color: colors.accentSoft }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Use address ${suggestion}`}
+                    >
+                      <MaterialIcons name="location-on" size={20} color={colors.muted} />
+                      <Text style={[styles.addressSuggestionText, { color: colors.text }]}>
+                        {suggestion}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+            {errorMessage ? (
+              <View style={styles.errorRow} accessibilityLiveRegion="polite">
+                <MaterialIcons name="error" size={20} color={colors.error} />
+                <Text style={[styles.errorText, { color: colors.error }]}>{errorMessage}</Text>
               </View>
-            )}
-            {addressError ? <Text style={styles.addressError}>{addressError}</Text> : null}
-            {propertyError ? <Text style={styles.addressError}>{propertyError}</Text> : null}
+            ) : null}
             {previewCoordinates ? (
-              <View style={styles.mapSection}>
-                <Text style={[styles.mapTitle, { color: colors.secondaryText }]}>Location</Text>
+              <>
+                <Text style={[styles.mapTitle, { color: colors.text }]}>Location</Text>
                 <MapPreview
                   key={`${previewCoordinates.latitude}-${previewCoordinates.longitude}`}
                   coordinates={previewCoordinates}
                 />
-                <Text style={[styles.coordinatesText, { color: colors.secondaryText }]}>
-                  {`Latitude ${previewCoordinates.latitude.toFixed(4)}, Longitude ${previewCoordinates.longitude.toFixed(4)}`}
-                </Text>
-                <Text style={[styles.mapAttribution, { color: colors.mutedText }]}>
-                  © OpenStreetMap contributors
-                </Text>
-              </View>
+                <View>
+                  <Text style={[styles.mapMeta, { color: colors.muted }]}>
+                    {`Latitude ${previewCoordinates.latitude.toFixed(4)}, Longitude ${previewCoordinates.longitude.toFixed(4)}`}
+                  </Text>
+                  <Text style={[styles.mapMeta, { color: colors.muted }]}>
+                    © OpenStreetMap contributors
+                  </Text>
+                </View>
+              </>
             ) : null}
           </ScrollView>
           <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={[
+            <Pressable
+              style={({ pressed }) => [
                 styles.modalButton,
-                styles.cancelButton,
-                { backgroundColor: colors.subtleSurface },
+                { backgroundColor: colors.surface2 },
+                (pressed || isCreating) && styles.buttonPressed,
               ]}
               onPress={onClose}
               disabled={isCreating}
-              activeOpacity={0.8}
+              accessibilityRole="button"
             >
-              <Text style={[styles.cancelButtonText, { color: colors.secondaryText }]}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
+              <Text style={[styles.buttonText, { color: colors.text }]}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
                 styles.modalButton,
-                styles.confirmButton,
-                isCreating && styles.buttonDisabled,
+                { backgroundColor: colors.accent },
+                pressed && styles.buttonPressed,
               ]}
               onPress={onAdd}
               disabled={isCreating}
-              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ busy: isCreating, disabled: isCreating }}
             >
               {isCreating ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={colors.onAccent} />
               ) : (
-                <Text style={styles.confirmButtonText}>OK</Text>
+                <Text style={[styles.buttonText, { color: colors.onAccent }]}>OK</Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -183,17 +199,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    paddingHorizontal: 14,
+    paddingVertical: 24,
   },
   modalCard: {
     width: '100%',
     maxWidth: 440,
     maxHeight: '90%',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: 'hidden',
     flexShrink: 1,
+    boxShadow: '0px 20px 50px rgba(0,0,0,0.35)',
   },
   modalScroll: {
     flexGrow: 0,
@@ -202,112 +218,85 @@ const styles = StyleSheet.create({
   modalContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    flexGrow: 0,
+    gap: 12,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
+    fontFamily: FONTS.heading,
+    fontSize: 22,
   },
   modalDescription: {
-    marginTop: 6,
-    marginBottom: 16,
-    fontSize: 14,
-    color: '#64748b',
+    fontFamily: FONTS.body,
+    fontSize: 15,
+    lineHeight: 21,
   },
   addressInput: {
-    minHeight: 48,
+    height: 56,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    color: '#0f172a',
-    fontSize: 15,
-  },
-  addressInputError: {
-    borderColor: '#dc2626',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    fontFamily: FONTS.body,
+    fontSize: 17,
   },
   addressSuggestions: {
     marginTop: 4,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
+    borderRadius: 14,
     overflow: 'hidden',
   },
   addressSuggestion: {
-    minHeight: 44,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
   },
   addressSuggestionText: {
     flex: 1,
-    color: '#334155',
+    fontFamily: FONTS.body,
+    fontSize: 15,
+  },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontFamily: FONTS.body,
     fontSize: 14,
-  },
-  addressError: {
-    marginTop: 6,
-    color: '#dc2626',
-    fontSize: 12,
-  },
-  mapSection: {
-    marginTop: 16,
+    lineHeight: 19,
   },
   mapTitle: {
-    marginBottom: 8,
-    color: '#334155',
+    fontFamily: FONTS.bodyBold,
+    fontSize: 14,
+  },
+  mapMeta: {
+    marginTop: 2,
+    fontFamily: FONTS.body,
     fontSize: 13,
-    fontWeight: '600',
-  },
-  coordinatesText: {
-    marginTop: 8,
-    color: '#334155',
-    fontSize: 12,
     textAlign: 'center',
-  },
-  mapAttribution: {
-    marginTop: 3,
-    color: '#64748b',
-    fontSize: 10,
-    textAlign: 'right',
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     gap: 10,
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 20,
   },
   modalButton: {
-    minWidth: 84,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 9,
+    flex: 1,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  cancelButton: {
-    backgroundColor: '#f1f5f9',
+  buttonPressed: {
+    opacity: 0.85,
   },
-  cancelButtonText: {
-    color: '#334155',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmButton: {
-    backgroundColor: '#2563eb',
-  },
-  confirmButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
+  buttonText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 17,
   },
 });

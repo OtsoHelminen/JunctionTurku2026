@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { createHouse, fetchHouses } from '../api/houses';
 import AddPropertyModal from '../components/properties/AddPropertyModal';
 import OrderHelpSection from '../components/properties/OrderHelpSection';
@@ -64,8 +64,8 @@ export default function Properties() {
         setPropertyError('');
       } catch (error: unknown) {
         if (!isActive) return;
-        const message = error instanceof Error ? error.message : String(error);
-        setPropertyError(`Couldn't load properties: ${message}`);
+        console.warn('Failed to load properties', error);
+        setPropertyError("Couldn't load properties. Check your connection and try again.");
       } finally {
         if (isActive) setIsLoadingProperties(false);
       }
@@ -97,8 +97,9 @@ export default function Properties() {
       setSelectedPropertyId(newProperty.id);
       handleCloseAddressModal();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      setPropertyError(`Couldn't create property: ${message}`);
+      // Never show the raw exception to the user
+      console.warn('Failed to create property', error);
+      setPropertyError("Couldn't create property. Check your connection and try again.");
     } finally {
       setIsCreatingProperty(false);
     }
@@ -121,13 +122,8 @@ export default function Properties() {
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}
-    >
-      {/* The selector's horizontal ScrollView grows to fill free space by default.
-          Wrapping it keeps it content-height so the sections sit right below it. */}
-      <View style={styles.selectorWrapper}>
+    <>
+      <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.container}>
         <PropertySelector
           entries={properties}
           isLoading={isLoadingProperties}
@@ -139,10 +135,10 @@ export default function Properties() {
             setIsAddressModalVisible(true);
           }}
         />
-      </View>
 
-      <ActiveAlertSection alerts={alerts} />
-      <OrderHelpSection experts={expertSuggestions} />
+        <ActiveAlertSection alerts={alerts} />
+        <OrderHelpSection experts={expertSuggestions} />
+      </ScrollView>
 
       <AddPropertyModal
         visible={isAddressModalVisible}
@@ -164,18 +160,15 @@ export default function Properties() {
         onAddressFocus={() => setShowAddressSuggestions(true)}
         onSelectAddressSuggestion={handleSelectAddressSuggestion}
       />
-    </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: '#f8fafc',
-    flexGrow: 1,
-  },
-  selectorWrapper: {
-    flexGrow: 0,
-    marginBottom: 22,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 24,
+    gap: 22,
   },
 });

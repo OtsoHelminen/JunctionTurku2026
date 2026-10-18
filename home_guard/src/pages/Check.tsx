@@ -9,13 +9,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useTheme } from '../theme/ThemeContext';
+import { FONTS, useTheme } from '../theme/ThemeContext';
 
 type Mode = 'idle' | 'camera' | 'preview';
-
-const ACCENT = '#3b4cf0';
 
 export default function Check() {
   const { colors } = useTheme();
@@ -75,13 +73,18 @@ export default function Check() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: colors.background }}
+      style={{ backgroundColor: colors.bg }}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
       {/* Camera frame (template) */}
       <View style={styles.frame}>
-        <View style={styles.frameContent}>
+        <View
+          style={[
+            styles.frameContent,
+            { backgroundColor: colors.surface2, borderColor: colors.line },
+          ]}
+        >
           {mode === 'camera' && (
             <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
           )}
@@ -97,11 +100,11 @@ export default function Check() {
               accessibilityRole="button"
               accessibilityLabel="Open camera"
             >
-              <Ionicons name="camera-outline" size={64} color={colors.text} />
+              <MaterialIcons name="photo-camera" size={64} color={colors.accentText} />
               <Text style={[styles.placeholderTitle, { color: colors.text }]}>
                 Tap to open camera
               </Text>
-              <Text style={[styles.placeholderHint, { color: colors.mutedText }]}>
+              <Text style={[styles.placeholderHint, { color: colors.muted }]}>
                 Photograph your completed safety task
               </Text>
             </Pressable>
@@ -130,17 +133,26 @@ export default function Check() {
       {/* Camera controls */}
       {mode === 'camera' && (
         <View style={styles.actions}>
-          <Pressable onPress={closeCamera} style={styles.sideButton}>
+          <Pressable
+            onPress={closeCamera}
+            style={styles.sideButton}
+            android_ripple={{ color: colors.accentSoft, borderless: true }}
+            accessibilityRole="button"
+          >
             <Text style={[styles.sideButtonText, { color: colors.text }]}>Cancel</Text>
           </Pressable>
           <Pressable
             onPress={takePhoto}
             disabled={isCapturing}
-            style={[styles.shutterOuter, isCapturing && styles.disabled]}
+            style={[
+              styles.shutterOuter,
+              { borderColor: colors.accent },
+              isCapturing && styles.disabled,
+            ]}
             accessibilityRole="button"
             accessibilityLabel="Take photo"
           >
-            <View style={styles.shutterInner} />
+            <View style={[styles.shutterInner, { backgroundColor: colors.accent }]} />
           </Pressable>
           <View style={styles.sideButton} />
         </View>
@@ -148,37 +160,60 @@ export default function Check() {
 
       {mode === 'preview' && (
         <View style={styles.actions}>
-          <Pressable onPress={retake} style={styles.sideButton}>
+          <Pressable
+            onPress={retake}
+            style={styles.sideButton}
+            android_ripple={{ color: colors.accentSoft, borderless: true }}
+            accessibilityRole="button"
+          >
             <Text style={[styles.sideButtonText, { color: colors.text }]}>Retake</Text>
           </Pressable>
-          <Pressable onPress={confirmPhoto} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Use photo</Text>
+          <Pressable
+            onPress={confirmPhoto}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: colors.accent },
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.primaryButtonText, { color: colors.onAccent }]}>Use photo</Text>
           </Pressable>
         </View>
       )}
 
-      {isCapturing && <ActivityIndicator style={styles.spinner} color={ACCENT} />}
+      {isCapturing && <ActivityIndicator style={styles.spinner} color={colors.accentText} />}
 
       {permissionDenied && (
         <View style={styles.deniedBox}>
           <Text style={[styles.deniedText, { color: colors.text }]}>
             Camera access is needed to take a photo. You can enable it in the app settings.
           </Text>
-          <Pressable onPress={() => Linking.openSettings()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Open settings</Text>
+          <Pressable
+            onPress={() => Linking.openSettings()}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: colors.accent },
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.primaryButtonText, { color: colors.onAccent }]}>
+              Open settings
+            </Text>
           </Pressable>
         </View>
       )}
 
       {/* Info cards */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}>
         <Text style={[styles.cardText, { color: colors.text }]}>
           Snap a photo of your completed safety task, such as a leak tray or a stove guard. Our AI
           instantly verifies the installation.
         </Text>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}>
         <Text style={[styles.cardText, { color: colors.text }]}>
           “Did I lock the door? Is the stove off?” Take a quick photo before you leave. Our AI
           confirms everything is secure, saving a time-stamped status you can check anywhere,
@@ -194,7 +229,8 @@ const CORNER_WIDTH = 4;
 
 const styles = StyleSheet.create({
   content: {
-    padding: 20,
+    paddingHorizontal: 18,
+    paddingTop: 18,
     paddingBottom: 32,
   },
 
@@ -210,9 +246,9 @@ const styles = StyleSheet.create({
     left: 10,
     right: 10,
     bottom: 10,
-    borderRadius: 8,
+    borderRadius: 14,
+    borderWidth: 1,
     overflow: 'hidden',
-    backgroundColor: 'rgba(120,120,120,0.08)',
   },
   placeholder: {
     flex: 1,
@@ -222,11 +258,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   placeholderTitle: {
+    fontFamily: FONTS.bodyBold,
     fontSize: 18,
-    fontWeight: '700',
   },
   placeholderHint: {
-    fontSize: 13,
+    fontFamily: FONTS.body,
+    fontSize: 15,
     textAlign: 'center',
   },
   corner: {
@@ -268,32 +305,34 @@ const styles = StyleSheet.create({
   },
   sideButton: {
     width: 90,
-    paddingVertical: 10,
+    minHeight: 48,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   sideButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FONTS.bodyBold,
+    fontSize: 17,
   },
   primaryButton: {
-    backgroundColor: ACCENT,
-    borderRadius: 999,
-    minWidth: 130,
-    paddingVertical: 10,
+    height: 52,
+    minWidth: 140,
+    borderRadius: 26,
     paddingHorizontal: 24,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.85,
   },
   primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
+    fontFamily: FONTS.bodyBold,
+    fontSize: 17,
   },
   shutterOuter: {
     width: 74,
     height: 74,
     borderRadius: 37,
     borderWidth: 4,
-    borderColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -301,7 +340,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: ACCENT,
   },
   disabled: {
     opacity: 0.5,
@@ -315,19 +353,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   deniedText: {
-    fontSize: 14,
+    fontFamily: FONTS.body,
+    fontSize: 15,
     textAlign: 'center',
   },
 
   // Info cards
   card: {
-    backgroundColor: 'rgba(120,120,120,0.08)',
-    borderRadius: 16,
+    borderRadius: 18,
+    borderWidth: 1,
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   cardText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontFamily: FONTS.body,
+    fontSize: 16,
+    lineHeight: 23,
   },
 });

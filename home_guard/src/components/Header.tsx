@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../theme/ThemeContext';
+import { FONTS, useTheme } from '../theme/ThemeContext';
 
 interface HeaderProps {
   title: string;
@@ -12,28 +13,36 @@ export default function Header({ title }: HeaderProps) {
   const { colors } = useTheme();
 
   return (
-    <View
-      style={[
-        styles.header,
-        { paddingTop: Math.max(insets.top + 14, 16), borderBottomColor: colors.border },
-      ]}
-    >
-      <Text style={styles.title}>{title}</Text>
+    <View style={{ paddingTop: insets.top, backgroundColor: colors.header }}>
+      <View style={styles.bar}>
+        <Image
+          source={require('../../assets/images/homeguard-logo.png')}
+          style={styles.logo}
+          accessibilityIgnoresInvertColors
+        />
+        <Text style={[styles.title, { color: colors.onHeader }]} accessibilityRole="header">
+          {title}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 20,
-    paddingBottom: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2563eb',
+  bar: {
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 18,
+  },
+  logo: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontFamily: FONTS.heading,
+    fontSize: 24,
   },
 });
