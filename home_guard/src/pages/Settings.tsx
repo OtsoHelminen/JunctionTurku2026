@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import DeveloperTools from '../components/properties/DeveloperTools';
+import MyProperties from './MyProperties';
 import { FONTS, useTheme } from '../theme/ThemeContext';
 
 function Toggle({ value }: { value: boolean }) {
@@ -71,9 +72,14 @@ export default function Settings() {
   // Mockup only: these switches are not wired to anything yet
   const [criticalAlerts, setCriticalAlerts] = useState(true);
   const [weatherWarnings, setWeatherWarnings] = useState(true);
+  const [showProperties, setShowProperties] = useState(false);
 
   const cardStyle = [styles.card, { backgroundColor: colors.surface, borderColor: colors.line }];
   const divider = <View style={[styles.divider, { backgroundColor: colors.line }]} />;
+
+  if (showProperties) {
+    return <MyProperties onBack={() => setShowProperties(false)} />;
+  }
 
   return (
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.container}>
@@ -106,9 +112,9 @@ export default function Settings() {
 
       <SectionHeader title="General" />
       <View style={cardStyle}>
-        {/* Mockup only: not linked to a screen yet */}
         <Pressable
           style={styles.linkRow}
+          onPress={() => setShowProperties(true)}
           android_ripple={{ color: colors.accentSoft }}
           accessibilityRole="button"
           accessibilityLabel="Properties"
