@@ -1,74 +1,150 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import DeveloperTools from '../components/properties/DeveloperTools';
 import { FONTS, useTheme } from '../theme/ThemeContext';
 
+function Toggle({ value }: { value: boolean }) {
+  const { colors } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.track,
+        value
+          ? { backgroundColor: colors.accent, justifyContent: 'flex-end' }
+          : { backgroundColor: colors.surface2, borderColor: colors.muted, borderWidth: 2 },
+      ]}
+    >
+      <View
+        style={
+          value
+            ? [styles.thumbOn, { backgroundColor: colors.onAccent }]
+            : [styles.thumbOff, { backgroundColor: colors.muted }]
+        }
+      />
+    </View>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  const { colors } = useTheme();
+
+  return (
+    <Text style={[styles.sectionHeader, { color: colors.muted }]} accessibilityRole="header">
+      {title}
+    </Text>
+  );
+}
+
+interface ToggleRowProps {
+  title: string;
+  description: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}
+
+// The whole row is the tap target
+function ToggleRow({ title, description, value, onChange }: ToggleRowProps) {
+  const { colors } = useTheme();
+
+  return (
+    <Pressable
+      style={styles.settingRow}
+      onPress={() => onChange(!value)}
+      android_ripple={{ color: colors.accentSoft }}
+      accessibilityRole="switch"
+      accessibilityLabel={title}
+      accessibilityState={{ checked: value }}
+    >
+      <View style={styles.settingText}>
+        <Text style={[styles.settingTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.subtitle, { color: colors.muted }]}>{description}</Text>
+      </View>
+      <Toggle value={value} />
+    </Pressable>
+  );
+}
+
 export default function Settings() {
   const { isDark, toggleTheme, colors } = useTheme();
+  // Mockup only: these switches are not wired to anything yet
+  const [criticalAlerts, setCriticalAlerts] = useState(true);
+  const [weatherWarnings, setWeatherWarnings] = useState(true);
+
+  const cardStyle = [styles.card, { backgroundColor: colors.surface, borderColor: colors.line }];
+  const divider = <View style={[styles.divider, { backgroundColor: colors.line }]} />;
 
   return (
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.container}>
-      <Text style={[styles.title, { color: colors.text }]} accessibilityRole="header">
-        Settings
-      </Text>
-
-      {/* The whole card is the tap target */}
-      <View style={[styles.cardShell, { borderColor: colors.line }]}>
-        <Pressable
-          style={[styles.settingRow, { backgroundColor: colors.surface }]}
-          onPress={() => toggleTheme(!isDark)}
-          android_ripple={{ color: colors.accentSoft }}
-          accessibilityRole="switch"
-          accessibilityLabel="Dark theme"
-          accessibilityState={{ checked: isDark }}
-        >
-          <View style={styles.settingText}>
-            <Text style={[styles.settingTitle, { color: colors.text }]}>Dark theme</Text>
-            <Text style={[styles.subtitle, { color: colors.muted }]}>
-              Use a dark appearance throughout the app.
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.track,
-              isDark
-                ? { backgroundColor: colors.accent, justifyContent: 'flex-end' }
-                : { backgroundColor: colors.surface2, borderColor: colors.muted, borderWidth: 2 },
-            ]}
-          >
-            <View
-              style={
-                isDark
-                  ? [styles.thumbOn, { backgroundColor: colors.onAccent }]
-                  : [styles.thumbOff, { backgroundColor: colors.muted }]
-              }
-            />
-          </View>
-        </Pressable>
+      <SectionHeader title="Appearance" />
+      <View style={cardStyle}>
+        <ToggleRow
+          title="Dark theme"
+          description="Use a dark appearance throughout the app."
+          value={isDark}
+          onChange={toggleTheme}
+        />
       </View>
 
-      <View style={styles.spacer} />
-      <DeveloperTools />
+      <SectionHeader title="Alerts" />
+      <View style={cardStyle}>
+        <ToggleRow
+          title="Critical alerts"
+          description="Sound and vibrate, even in Do Not Disturb"
+          value={criticalAlerts}
+          onChange={setCriticalAlerts}
+        />
+        {divider}
+        <ToggleRow
+          title="Weather warnings"
+          description="Storm, frost and heavy rain"
+          value={weatherWarnings}
+          onChange={setWeatherWarnings}
+        />
+      </View>
+
+      <SectionHeader title="General" />
+      <View style={cardStyle}>
+        {/* Mockup only: not linked to a screen yet */}
+        <Pressable
+          style={styles.linkRow}
+          android_ripple={{ color: colors.accentSoft }}
+          accessibilityRole="button"
+          accessibilityLabel="Properties"
+        >
+          <MaterialIcons name="holiday-village" size={26} color={colors.text} />
+          <Text style={[styles.linkTitle, { color: colors.text }]}>Properties</Text>
+          <MaterialIcons name="chevron-right" size={24} color={colors.muted} />
+        </Pressable>
+        {divider}
+        <DeveloperTools />
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
     paddingHorizontal: 18,
-    paddingTop: 20,
-    paddingBottom: 8,
-    gap: 14,
+    paddingBottom: 24,
   },
-  title: {
+  sectionHeader: {
     fontFamily: FONTS.heading,
-    fontSize: 24,
+    fontSize: 14,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: 22,
+    marginBottom: 10,
+    marginLeft: 2,
   },
-  cardShell: {
+  card: {
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
+  },
+  divider: {
+    height: 1,
   },
   settingRow: {
     flexDirection: 'row',
@@ -89,6 +165,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
   },
+  linkRow: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+  },
+  linkTitle: {
+    flex: 1,
+    fontFamily: FONTS.body,
+    fontSize: 17,
+  },
   track: {
     width: 56,
     height: 34,
@@ -106,9 +194,5 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-  },
-  // Pushes Developer tools to the bottom when the content is short
-  spacer: {
-    flexGrow: 1,
   },
 });

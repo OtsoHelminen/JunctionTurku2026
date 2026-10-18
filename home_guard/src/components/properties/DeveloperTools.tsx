@@ -77,14 +77,15 @@ export default function DeveloperTools() {
   return (
     <View>
       <Pressable
-        style={[styles.developerToolsToggle, { borderTopColor: colors.line }]}
+        style={styles.developerToolsToggle}
         onPress={() => setIsExpanded((expanded) => !expanded)}
         android_ripple={{ color: colors.accentSoft }}
         accessibilityRole="button"
         accessibilityLabel="Developer tools"
         accessibilityState={{ expanded: isExpanded }}
       >
-        <Text style={[styles.developerToolsTitle, { color: colors.muted }]}>Developer tools</Text>
+        <MaterialIcons name="code" size={26} color={colors.text} />
+        <Text style={[styles.developerToolsTitle, { color: colors.text }]}>Developer tools</Text>
         <MaterialIcons
           name={isExpanded ? 'expand-less' : 'expand-more'}
           size={24}
@@ -192,17 +193,19 @@ export default function DeveloperTools() {
 
 const styles = StyleSheet.create({
   developerToolsToggle: {
-    height: 56,
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
+    gap: 14,
+    paddingHorizontal: 16,
   },
   developerToolsTitle: {
+    flex: 1,
     fontFamily: FONTS.body,
-    fontSize: 16,
+    fontSize: 17,
   },
   developerToolsContent: {
+    paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 12,
   },
