@@ -21,7 +21,7 @@ export default function TabItem({
   onPress,
 }: TabItemProps) {
   const { colors } = useTheme();
-  const color = isActive ? colors.accentText : colors.muted;
+  const iconColor = isActive ? colors.accentText : colors.muted;
 
   return (
     <Pressable
@@ -32,14 +32,19 @@ export default function TabItem({
       accessibilityLabel={label}
       accessibilityState={{ selected: isActive }}
     >
-      <View style={[styles.pill, isActive && { backgroundColor: colors.accentSoft }]}>
+      <View style={styles.iconContainer}>
         <MaterialCommunityIcons
           name={isActive ? activeIcon : inactiveIcon}
           size={24}
-          color={color}
+          color={iconColor}
         />
       </View>
-      <Text style={[styles.label, { color, fontFamily: isActive ? FONTS.bodyBold : FONTS.body }]}>
+      <Text
+        style={[
+          styles.label,
+          { color: colors.muted, fontFamily: isActive ? FONTS.bodyBold : FONTS.body },
+        ]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -53,7 +58,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  pill: {
+  iconContainer: {
     width: 60,
     height: 32,
     borderRadius: 16,
